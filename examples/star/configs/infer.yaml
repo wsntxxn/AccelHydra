@@ -1,0 +1,16 @@
+defaults:
+  - basic
+  - _self_
+
+wav_dir: inference_delay
+
+noise_scheduler:
+  type: DDIMScheduler
+  name: stabilityai/stable-diffusion-2-1
+
+infer_args:
+  num_steps: 50
+  guidance_scale: 3.5
+  guidance_rescale: 0.5
+  use_gt_duration: false
+  latent_shape: [128, 500]

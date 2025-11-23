@@ -1,0 +1,22 @@
+train:
+  _target_: data_module.dataset.SketchToAudioDataset
+  content: data/audiocaps/train/caption.jsonl
+  audio: data/audiocaps/train/audio.jsonl
+  target_sr: ${sample_rate}
+  use_h5_cache: false
+  task_instruction: ${instruction_embedding}
+val:
+  _target_: data_module.dataset.SketchToAudioDataset
+  content: data/audiocaps/val/caption.jsonl
+  audio: data/audiocaps/val/audio.jsonl
+  target_sr: ${sample_rate}
+  use_h5_cache: false
+  task_instruction: ${instruction_embedding}
+test:
+  _target_: data_module.dataset.SketchToAudioDataset
+  content: data/audiocaps/test/caption.jsonl
+  audio: data/audiocaps/test/audio.jsonl
+  target_sr: ${sample_rate}
+  use_h5_cache: false
+  task_instruction: ${instruction_embedding}
+  instruction_idx: 1

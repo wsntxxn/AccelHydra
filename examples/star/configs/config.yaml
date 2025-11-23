@@ -1,0 +1,85 @@
+sample_rate: 24000
+model:
+  autoencoder:
+    _target_: models.autoencoder.waveform.stable_vae.StableVAE
+    encoder:
+      _target_: models.autoencoder.waveform.stable_vae.OobleckEncoder
+      in_channels: 1
+      channels: 128
+      c_mults:
+      - 1
+      - 2
+      - 4
+      - 8
+      strides:
+      - 2
+      - 4
+      - 6
+      - 10
+      latent_dim: 256
+      use_snake: true
+    decoder:
+      _target_: models.autoencoder.waveform.stable_vae.OobleckDecoder
+      out_channels: 1
+      channels: 128
+      c_mults:
+      - 1
+      - 2
+      - 4
+      - 8
+      strides:
+      - 2
+      - 4
+      - 6
+      - 10
+      latent_dim: 128
+      use_snake: true
+      final_tanh: false
+    io_channels: 1
+    latent_dim: 128
+    downsampling_ratio: 480
+    sample_rate: 24000
+    pretrained_ckpt: ckpts/1m.pt
+    bottleneck:
+      _target_: models.autoencoder.waveform.stable_vae.VAEBottleneck
+  backbone:
+    _target_: models.dit.mask_dit.UDiT
+    img_size: 500
+    patch_size: 1
+    in_chans: 128
+    out_chans: 128
+    input_type: 1d
+    embed_dim: 1024
+    depth: 24
+    num_heads: 16
+    mlp_ratio: 4.0
+    qkv_bias: false
+    qk_scale: null
+    qk_norm: layernorm
+    norm_layer: layernorm
+    act_layer: geglu
+    context_norm: true
+    use_checkpoint: true
+    time_fusion: ada_sola_bias
+    ada_sola_rank: 32
+    ada_sola_alpha: 32
+    cls_dim: null
+    context_dim: 1024
+    context_fusion: cross
+    context_max_length: null
+    context_pe_method: none
+    pe_method: none
+    rope_mode: shared
+    use_conv: true
+    skip: true
+    skip_norm: true
+  cfg_drop_ratio: 0.2
+  _target_: models.flow_matching.SingleTaskCrossAttentionAudioFlowMatching
+  content_encoder:
+    _target_: models.content_encoder.content_encoder.ContentEncoder
+    embed_dim: 1024
+    text_encoder: None
+    speech_encoder:
+      _target_: models.content_encoder.star_encoder.star_encoder.QformerBridgeNet
+      load_from_pretrained: ckpts/exp0_best.pt
+  pretrained_ckpt: ckpts/model.safetensors

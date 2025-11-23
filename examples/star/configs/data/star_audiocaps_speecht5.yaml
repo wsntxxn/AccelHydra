@@ -1,0 +1,12 @@
+defaults:
+  - default
+  - _self_
+
+train_data_list:
+  - ${..star_audiocaps_speecht5.train}
+
+val_data_list:
+  - ${..star_audiocaps_speecht5.val}
+
+test_data_list:
+  - ${..star_audiocaps_speecht5.test}

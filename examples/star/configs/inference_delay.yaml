@@ -1,0 +1,31 @@
+defaults:
+  - basic
+  - data@data_dict: star_audiocaps_vits
+  - _self_
+
+test_dataloader:
+  _target_: torch.utils.data.DataLoader
+  dataset:
+    _target_: data_module.dataset.OriSpeechToAudioDataset
+    content: data/star_audiocaps_vits/test/new.jsonl
+    task_instruction: ${instruction_embedding}
+    instruction_idx: 1
+  batch_size: 1
+  shuffle: False
+  num_workers: 0
+  collate_fn:
+    _target_: data_module.collate_function.PaddingCollate
+    pad_keys: []
+
+wav_dir: inference_delay
+
+noise_scheduler:
+  type: DDIMScheduler
+  name: stabilityai/stable-diffusion-2-1
+
+infer_args:
+  num_steps: 50
+  guidance_scale: 3.5
+  guidance_rescale: 0.5
+  use_gt_duration: false
+  latent_shape: [128, 500]

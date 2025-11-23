@@ -1,0 +1,12 @@
+defaults:
+  - default
+  - _self_
+
+train_data_list:
+  - ${..star_audiocaps_vits.train}
+
+val_data_list:
+  - ${..star_audiocaps_vits.val}
+
+test_data_list:
+  - ${..star_audiocaps_vits.test}

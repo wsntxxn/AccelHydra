@@ -1,0 +1,27 @@
+defaults:
+  - autoencoder: stable_vae
+  - backbone: layer_fusion_dit
+  - _self_
+
+embed_dim: 1024
+cfg_drop_ratio: 0.2
+
+backbone:
+  context_dim: 1024
+  ta_context_dim: 2
+  embed_dim: ${..embed_dim}
+  depth: 24
+  num_heads: 16
+
+_target_: models.flow_matching.MultiContentAudioFlowMatching
+content_encoder:
+  _target_: models.content_encoder.content_encoder.ContentEncoder
+  embed_dim: ${..embed_dim}
+  sketch_encoder:
+    _target_: models.content_encoder.sketch_encoder.SketchT5TextEncoder
+    model_name: google/flan-t5-large
+    embed_dim: ${..embed_dim}
+    latent_dim: 500
+    f0_dim: 2001
+    energy_dim: 469
+    
