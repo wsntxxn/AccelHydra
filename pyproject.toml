@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling", "hatch-requirements-txt"]
+build-backend = "hatchling.build"
+
+[project]
+name = "uniflow-audio"
+version = "0.0.1"
+description = "Uniflow-Audio is a lightweight training framework built on Accelerate that allows researchers and developers to train audio generation from omni-modalities, focusing on Speech, Language, Audio, Music processing."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+]
+dynamic = ["dependencies"]
+
+[project.urls]
+"Homepage" = "https://github.com/wsntxxn/UniFlow-Audio"
+"Bug Tracker" = "https://github.com/wsntxxn/UniFlow-Audio/issues"
+
+[tool.hatch.build]
+exclude = [
+  "dist/*",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/uniflow_audio"]
+
+[tool.hatch.metadata.hooks.requirements_txt]
+files = ["requirements.txt"]
