@@ -14,6 +14,6 @@ val:
   task_instruction: ${instruction_embedding}
 test:
   _target_: data_module.dataset.DirectSpeechToAudioDataset
-  content: data/star_audiocaps_speecht5/test/CLB_mixed_caption.jsonl
+  content: data/star_audiocaps_speecht5/test/caption.jsonl
   task_instruction: ${instruction_embedding}
   instruction_idx: 1

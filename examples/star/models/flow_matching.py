@@ -17,7 +17,7 @@ from diffusers.training_utils import compute_density_for_timestep_sampling
 from models.autoencoder.autoencoder_base import AutoEncoderBase
 from models.content_encoder.content_encoder import ContentEncoder
 from models.content_adapter import ContentAdapterBase
-from models.common import LoadPretrainedBase, CountParamsBase, SaveTrainableParamsBase
+from uniflow_audio.models.common import LoadPretrainedBase, CountParamsBase, SaveTrainableParamsBase
 from uniflow_audio.utils.torch_utilities import (
     create_alignment_path, create_mask_from_length, loss_with_mask,
     trim_or_pad_length

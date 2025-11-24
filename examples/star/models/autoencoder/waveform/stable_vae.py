@@ -9,7 +9,7 @@ import torchaudio
 from alias_free_torch import Activation1d
 
 from uniflow_audio.models.common import LoadPretrainedBase
-from uniflow_audio.models.autoencoder.autoencoder_base import AutoEncoderBase
+from models.autoencoder.autoencoder_base import AutoEncoderBase
 from uniflow_audio.utils.torch_utilities import remove_key_prefix_factory, create_mask_from_length
 
 
