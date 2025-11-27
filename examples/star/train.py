@@ -1,16 +1,14 @@
 from pathlib import Path
-from copy import deepcopy
 import multiprocessing as mp
 
 mp.set_start_method("spawn", force=True)
 
 import hydra
 from omegaconf import OmegaConf
-from accelerate import Accelerator
 from accelerate.state import PartialState
 
-from uniflow_audio.utils.config import register_omegaconf_resolvers
-from uniflow_audio.utils.lr_scheduler_utilities import (
+from accel_hydra.utils.config import register_omegaconf_resolvers
+from accel_hydra.utils.lr_scheduler import (
     get_warmup_steps,
     get_dataloader_one_pass_outside_steps,
     get_total_training_steps,
@@ -18,34 +16,11 @@ from uniflow_audio.utils.lr_scheduler_utilities import (
     get_dataloader_one_pass_steps_inside_accelerator,
     lr_scheduler_param_adapter,
 )
-from uniflow_audio.models.common import CountParamsBase
-from uniflow_audio.trainer import Trainer
-from copy import deepcopy
+from accel_hydra.models.common import CountParamsBase
+from accel_hydra.trainer import Trainer
+from accel_hydra.utils.data import init_dataloader_from_config
 
 register_omegaconf_resolvers()
-
-def setup_dataloader_args(config: dict):
-    dataloader_config = deepcopy(config)
-    args = {}
-    if "sampler" in config:
-        data_source = hydra.utils.instantiate(
-            config["dataset"], _convert_="all"
-        )
-        sampler = hydra.utils.instantiate(
-            config["sampler"], data_source=data_source, _convert_="all"
-        )
-        args["sampler"] = sampler
-        dataloader_config.pop("sampler")
-    elif "batch_sampler" in config:
-        data_source = hydra.utils.instantiate(
-            config["dataset"], _convert_="all"
-        )
-        batch_sampler = hydra.utils.instantiate(
-            config["batch_sampler"], data_source=data_source, _convert_="all"
-        )
-        args["batch_sampler"] = batch_sampler
-        dataloader_config.pop("batch_sampler")
-    return args, dataloader_config
 
 
 def setup_resume_cfg(config):
@@ -107,18 +82,8 @@ def main():
     state = PartialState()
 
     model: CountParamsBase = hydra.utils.instantiate(config["model"])
-    train_data_args, train_dataloader_config = setup_dataloader_args(
-        config["train_dataloader"]
-    )
-    train_dataloader = hydra.utils.instantiate(
-        train_dataloader_config, **train_data_args, _convert_="all"
-    )
-    val_data_args, val_dataloader_config = setup_dataloader_args(
-        config["val_dataloader"]
-    )
-    val_dataloader = hydra.utils.instantiate(
-        val_dataloader_config, **val_data_args, _convert_="all"
-    )
+    train_dataloader = init_dataloader_from_config(config["train_dataloader"])
+    val_dataloader = init_dataloader_from_config(config["val_dataloader"])
     optimizer = hydra.utils.instantiate(
         config["optimizer"], params=model.parameters(), _convert_="all"
     )

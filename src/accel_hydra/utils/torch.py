@@ -109,29 +109,6 @@ def loss_with_mask(
         return loss
 
 
-def convert_pad_shape(pad_shape: list[list[int]]):
-    l = pad_shape[::-1]
-    pad_shape = [item for sublist in l for item in sublist]
-    return pad_shape
-
-
-def create_alignment_path(duration: torch.Tensor, mask: torch.Tensor):
-    device = duration.device
-
-    b, t_x, t_y = mask.shape
-    cum_duration = torch.cumsum(duration, 1)
-
-    cum_duration_flat = cum_duration.view(b * t_x)
-    path = create_mask_from_length(cum_duration_flat, t_y).float()
-    path = path.view(b, t_x, t_y)
-    # take the diff on the `t_x` axis
-    path = path - torch.nn.functional.pad(
-        path, convert_pad_shape([[0, 0], [1, 0], [0, 0]])
-    )[:, :-1]
-    path = path * mask
-    return path
-
-
 def trim_or_pad_length(x: torch.Tensor, target_length: int, length_dim: int):
     """
     Adjusts the size of the specified dimension of tensor x to match `target_length`.
@@ -169,9 +146,11 @@ def trim_or_pad_length(x: torch.Tensor, target_length: int, length_dim: int):
 
 
 def concat_non_padding(
-    seq1: torch.Tensor, mask1: torch.BoolTensor, seq2: torch.Tensor,
-    mask2: torch.BoolTensor
-):
+    seq1: torch.Tensor,
+    mask1: torch.BoolTensor,
+    seq2: torch.Tensor,
+    mask2: torch.BoolTensor,
+) -> tuple[torch.Tensor, torch.BoolTensor, torch.LongTensor]:
     """
     Args
         seq1 : Tensor (B, L1, E)
@@ -219,9 +198,11 @@ def concat_non_padding(
 
 
 def restore_from_concat(
-    concat_seq: torch.Tensor, mask1: torch.BoolTensor, mask2: torch.BoolTensor,
-    perm: torch.LongTensor
-):
+    concat_seq: torch.Tensor,
+    mask1: torch.BoolTensor,
+    mask2: torch.BoolTensor,
+    perm: torch.LongTensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Restore (seq1, seq2) from the concatenated sequence produced by
     `concat_non_padding`, using the returned permutation `perm`.

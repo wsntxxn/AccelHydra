@@ -3,9 +3,9 @@ requires = ["hatchling", "hatch-requirements-txt"]
 build-backend = "hatchling.build"
 
 [project]
-name = "uniflow-audio"
+name = "accel_hydra"
 version = "0.0.1"
-description = "Uniflow-Audio is a lightweight training framework built on Accelerate that allows researchers and developers to train audio generation from omni-modalities, focusing on Speech, Language, Audio, Music processing."
+description = "AccelHydra is a lightweight, modular, configurable training framework built on Accelerate and Hydra"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
@@ -16,8 +16,8 @@ classifiers = [
 dynamic = ["dependencies"]
 
 [project.urls]
-"Homepage" = "https://github.com/wsntxxn/UniFlow-Audio"
-"Bug Tracker" = "https://github.com/wsntxxn/UniFlow-Audio/issues"
+"Homepage" = "https://github.com/wsntxxn/AccelHydra"
+"Bug Tracker" = "https://github.com/wsntxxn/AccelHydra/issues"
 
 [tool.hatch.build]
 exclude = [
@@ -25,7 +25,7 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/uniflow_audio"]
+packages = ["src/accel_hydra"]
 
 [tool.hatch.metadata.hooks.requirements_txt]
 files = ["requirements.txt"]

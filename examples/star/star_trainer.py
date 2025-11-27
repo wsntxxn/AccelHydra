@@ -9,8 +9,8 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.utils._pytree import tree_map
 from omegaconf import OmegaConf
 
-from uniflow_audio.trainer import Trainer
-from uniflow_audio.utils.logging import LoggingLogger
+from accel_hydra.trainer import Trainer
+from accel_hydra.utils.logging import LoggingLogger
 
 
 @dataclass(kw_only=True)

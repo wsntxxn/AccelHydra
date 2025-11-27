@@ -1,6 +1,7 @@
 from pathlib import Path
 import sys
 import os
+from typing import Callable
 
 import hydra
 import omegaconf
@@ -14,31 +15,26 @@ def multiply(*args):
     return result
 
 
-def get_pitch_downsample_ratio(
-    autoencoder_config: dict, pitch_frame_resolution: float
-):
-    latent_frame_resolution = autoencoder_config[
-        "downsampling_ratio"] / autoencoder_config["sample_rate"]
-    return round(latent_frame_resolution / pitch_frame_resolution)
-
-
-def register_omegaconf_resolvers() -> None:
+def register_omegaconf_resolvers(clear_resolvers: bool = True) -> None:
     """
     Register custom resolver for hydra configs, which can be used in YAML
-    files for dynamically setting values
+    files for dynamically setting values.
+    
+    Args:
+        clear_resolvers: If True, clear all existing resolvers before registering.
+                        Set to False if you want to extend existing resolvers.
     """
-    OmegaConf.clear_resolvers()
+    if clear_resolvers:
+        OmegaConf.clear_resolvers()
     OmegaConf.register_new_resolver("len", len, replace=True)
     OmegaConf.register_new_resolver("multiply", multiply, replace=True)
-    OmegaConf.register_new_resolver(
-        "get_pitch_downsample_ratio", get_pitch_downsample_ratio, replace=True
-    )
 
 
 def generate_config_from_command_line_overrides(
-    config_file: str | Path
+    config_file: str | Path,
+    register_resolver_fn: Callable = register_omegaconf_resolvers,
 ) -> omegaconf.DictConfig:
-    register_omegaconf_resolvers()
+    register_resolver_fn()
 
     config_file = Path(config_file).resolve()
     config_name = config_file.name.__str__()

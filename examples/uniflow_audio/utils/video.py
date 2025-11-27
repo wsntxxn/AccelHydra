@@ -6,8 +6,6 @@ import tempfile
 import numpy as np
 import soundfile as sf
 from moviepy import VideoFileClip, AudioFileClip
-from moviepy.audio.AudioClip import AudioArrayClip
-from moviepy.audio.fx import AudioLoop
 import torch
 import torchvision
 
