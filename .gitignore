@@ -171,10 +171,8 @@ cython_debug/
 .pypirc
 
 # Experiment logs and checkpoints
-experiments/
-checkpoints/
-ckpts/
-evaluation/result/
+examples/*/experiments/
+**/checkpoints/
 
 # Raw / processed data file
 
@@ -194,10 +192,6 @@ demo/
 
 # Binary data files
 **/*.h5
-
-test*
-
-start.sh
 
 # macOS sys files
 .DS_Store

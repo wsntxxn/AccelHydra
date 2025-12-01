@@ -7,7 +7,7 @@ name = "accel_hydra"
 version = "0.0.1"
 description = "AccelHydra is a lightweight, modular, configurable training framework built on Accelerate and Hydra"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: Other/Proprietary License",

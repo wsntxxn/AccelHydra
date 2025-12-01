@@ -1,0 +1,26 @@
+_target_: models.flow_matching.CFM
+transformer:
+  _target_: models.dit.DiT
+  dim: 1024
+  depth: 22
+  heads: 16
+  ff_mult: 2
+  text_dim: 512
+  text_mask_padding: True
+  qk_norm: null  # null | rms_norm
+  conv_layers: 4
+  pe_attn_head: null
+  attn_backend: torch  # torch | flash_attn
+  attn_mask_enabled: False
+  checkpoint_activations: False  # recompute activations and save memory for extra compute
+  text_num_embeds: ${get_vocab_size:${tokenizer_path},${tokenizer}}
+  mel_dim: ${..mel_spec_kwargs.n_mel_channels}
+mel_spec_kwargs:
+  target_sample_rate: 24000
+  n_mel_channels: 100
+  hop_length: 256
+  win_length: 1024
+  n_fft: 1024
+  mel_spec_type: ${vocoder}  # vocos | bigvgan
+tokenizer_path: ${tokenizer_path}
+tokenizer: ${tokenizer}

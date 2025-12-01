@@ -1,7 +1,8 @@
 from pathlib import Path
 import torch
 import torch.nn as nn
-from uniflow_audio.utils.torch_utilities import load_pretrained_model, merge_matched_keys
+
+from accel_hydra.utils.torch import load_pretrained_model, merge_matched_keys
 
 
 class LoadPretrainedBase(nn.Module):

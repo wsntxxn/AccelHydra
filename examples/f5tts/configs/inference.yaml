@@ -1,0 +1,24 @@
+exp_dir: ""
+ckpt_dir_or_file: ""
+
+wav_dir_root: Null
+wav_dir: "inference"
+
+vocoder:
+  vocoder_name: "bigvgan"
+  is_local: true
+  local_path: "/mnt/shared-storage-user/brainllm-share/checkpoints/bigvgan_v2_24khz_100band_256x"
+
+target_rms: 0.1
+
+text: "The space between his two front teeth, which were unusually far apart, gave him the proficiency in whistling for which he was distinguished at college. (He also played the cornet in the University band.)"
+prompt_text: "\"There's a heavy storm coming on,\" I cried, pointing towards the horizon."
+prompt_speech: "/mnt/shared-storage-user/brainllm-share/data/LibriTTS/test-clean/260/123288/260_123288_000012_000000.wav"
+output_fname: "output.wav"
+
+infer_args:
+  steps: 32
+  cfg_strength: 2.0
+  sway_sampling_coef: -1
+  no_ref_audio: false
+  seed: 2025

@@ -1,3 +1,3 @@
-from .base import Trainer
+from .base import Trainer, MetricMonitor, LoggingConfig
 
-__all__ = ["Trainer"]
+__all__ = ["Trainer", "MetricMonitor", "LoggingConfig"]
