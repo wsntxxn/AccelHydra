@@ -28,23 +28,30 @@ def init_dataloader_from_config(config: dict):
     config = deepcopy(config)
     kwargs = {}
     if "sampler" in config:
-        data_source = hydra.utils.instantiate(
-            config["dataset"], _convert_="all"
-        )
-        sampler = hydra.utils.instantiate(
-            config["sampler"], data_source=data_source, _convert_="all"
-        )
+        config["sampler"]["data_source"] = config["dataset"]
+        sampler = hydra.utils.instantiate(config["sampler"], _convert_="all")
         kwargs["sampler"] = sampler
         config.pop("sampler")
+
+        # if hasattr(sampler, "data_source"):
+        #     kwargs["dataset"] = sampler.data_source
+        #     config.pop("dataset")
+
     elif "batch_sampler" in config:
-        data_source = hydra.utils.instantiate(
-            config["dataset"], _convert_="all"
-        )
+        config["batch_sampler"]["data_source"] = config["dataset"]
         batch_sampler = hydra.utils.instantiate(
-            config["batch_sampler"], data_source=data_source, _convert_="all"
+            config["batch_sampler"], _convert_="all"
         )
         kwargs["batch_sampler"] = batch_sampler
         config.pop("batch_sampler")
+
+        # if hasattr(batch_sampler, "sampler"
+        #           ) and hasattr(batch_sampler.sampler, "data_source"):
+        #     kwargs["dataset"] = batch_sampler.sampler.data_source
+        #     config.pop("dataset")
+        # elif hasattr(batch_sampler, "data_source"):
+        #     kwargs["dataset"] = batch_sampler.data_source
+        #     config.pop("dataset")
 
     dataloader = hydra.utils.instantiate(config, **kwargs, _convert_="all")
     return dataloader

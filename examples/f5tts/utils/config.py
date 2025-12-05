@@ -4,6 +4,10 @@ from accel_hydra.utils.config import register_omegaconf_resolvers as register_ba
 from utils.tokenize import get_vocab_size
 
 
+def add(*x):
+    return sum(x)
+
+
 def register_omegaconf_resolvers() -> None:
     """
     Register custom resolvers.
@@ -14,3 +18,4 @@ def register_omegaconf_resolvers() -> None:
     OmegaConf.register_new_resolver(
         "get_vocab_size", get_vocab_size, replace=True
     )
+    OmegaConf.register_new_resolver("add", add, replace=True)

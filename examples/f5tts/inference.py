@@ -79,7 +79,9 @@ def main():
         f'\n ckpt path: {ckpt_path}, model config path: {exp_config_path}\n '
     )
 
-    model: LoadPretrainedBase = hydra.utils.instantiate(exp_config["model"])
+    model: LoadPretrainedBase = hydra.utils.instantiate(
+        exp_config["model"], _convert_="all"
+    )
     state_dict = load_file(ckpt_path)
     model.load_pretrained(state_dict)
     model.eval()
@@ -116,12 +118,25 @@ def main():
     unwrapped_model = accelerator.unwrap_model(model)
     # pbar_disable = not accelerator.is_main_process
 
-    mel_spectrogram_fn = MelSpec(**exp_config["model"]["mel_spec_kwargs"])
-    mel_spec_type = exp_config["model"]["mel_spec_kwargs"]["mel_spec_type"]
+    mel_spec_kwargs = {
+        "target_sample_rate":
+            exp_config["train_dataloader"]["dataset"]["target_sample_rate"],
+        "n_mel_channels":
+            exp_config["train_dataloader"]["dataset"]["n_mel_channels"],
+        "hop_length":
+            exp_config["train_dataloader"]["dataset"]["hop_length"],
+        "win_length":
+            exp_config["train_dataloader"]["dataset"]["win_length"],
+        "n_fft":
+            exp_config["train_dataloader"]["dataset"]["n_fft"],
+        "mel_spec_type":
+            exp_config["train_dataloader"]["dataset"]["mel_spec_type"],
+    }
+    mel_spectrogram_fn = MelSpec(**mel_spec_kwargs)
+    mel_spec_type = mel_spec_kwargs["mel_spec_type"]
 
     # Prompt speech
-    target_sample_rate = exp_config["model"]["mel_spec_kwargs"][
-        "target_sample_rate"]
+    target_sample_rate = mel_spec_kwargs["target_sample_rate"]
     target_rms = config["target_rms"]
     ref_audio, ref_sr = torchaudio.load(config["prompt_speech"])
     ref_rms = torch.sqrt(torch.mean(torch.square(ref_audio)))
@@ -156,18 +171,47 @@ def main():
     ref_mel_len = ref_mel.shape[-1]
     ref_text_len = len(prompt_text.encode("utf-8"))
     gen_text_len = len(gen_text.encode("utf-8"))
-    total_mel_len = ref_mel_len + int(
-        ref_mel_len / ref_text_len * gen_text_len
-    )
+    if "target_duration" in config:
+        gen_mel_len = int(
+            config["target_duration"] * target_sample_rate /
+            exp_config["train_dataloader"]["dataset"]["hop_length"]
+        )
+    else:
+        gen_mel_len = int(ref_mel_len / ref_text_len * gen_text_len)
+    total_mel_len = ref_mel_len + gen_mel_len
 
     with torch.no_grad():
-        mel_spec, _ = unwrapped_model.sample(
-            cond=ref_mel.unsqueeze(0).permute(0, 2, 1),
-            text=text_list,
-            duration=torch.as_tensor([total_mel_len]).to(accelerator.device),
-            lens=torch.as_tensor([ref_mel_len]).to(accelerator.device),
-            **config["infer_args"],
-        )
+        if hasattr(unwrapped_model, 'inference') and callable(
+            getattr(unwrapped_model, 'inference')
+        ):
+            mel_spec = unwrapped_model.inference(
+                mel_spec=ref_mel.unsqueeze(0).permute(0, 2, 1),
+                text=text_list,
+                duration=torch.as_tensor([total_mel_len]).to(
+                    accelerator.device
+                ),
+                mel_spec_lengths=torch.as_tensor([ref_mel_len]).to(
+                    accelerator.device
+                ),
+                **config["infer_args"],
+            )
+        elif hasattr(unwrapped_model, 'sample') and callable(
+            getattr(unwrapped_model, 'sample')
+        ):
+            result = unwrapped_model.sample(
+                cond=ref_mel.unsqueeze(0).permute(0, 2, 1),
+                text=text_list,
+                duration=torch.as_tensor([total_mel_len]).to(
+                    accelerator.device
+                ),
+                lens=torch.as_tensor([ref_mel_len]).to(accelerator.device),
+                **config["infer_args"],
+            )
+            mel_spec = result[0]
+        else:
+            raise AttributeError(
+                f"Model {type(unwrapped_model).__name__} has neither 'inference' nor 'sample' method"
+            )
 
         mel_spec = mel_spec[0]
         mel_spec = mel_spec[ref_mel_len:total_mel_len, :].unsqueeze(0)

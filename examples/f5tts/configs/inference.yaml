@@ -1,3 +1,7 @@
+defaults:
+  - basic
+  - _self_
+
 exp_dir: ""
 ckpt_dir_or_file: ""
 
@@ -10,15 +14,26 @@ vocoder:
   local_path: "/mnt/shared-storage-user/brainllm-share/checkpoints/bigvgan_v2_24khz_100band_256x"
 
 target_rms: 0.1
+# target_duration: 7.0
 
-text: "The space between his two front teeth, which were unusually far apart, gave him the proficiency in whistling for which he was distinguished at college. (He also played the cornet in the University band.)"
-prompt_text: "\"There's a heavy storm coming on,\" I cried, pointing towards the horizon."
-prompt_speech: "/mnt/shared-storage-user/brainllm-share/data/LibriTTS/test-clean/260/123288/260_123288_000012_000000.wav"
+# text: "this function's implementation will be changed to use torchaudio. We recommend that you port your code to rely directly on codec"
+text: "this function's implementation will be changed to use torchaudio. We recommend that you port your code to rely directly on codec"
+prompt_text: "\"Bring the light in here!\" he commanded eagerly, as he once more entered the hut."
+prompt_speech: "/mnt/shared-storage-user/brainllm-share/data/LibriTTS/train-clean-100/7635/105409/7635_105409_000053_000000.wav"
 output_fname: "output.wav"
 
+# noise_scheduler:
+#   type: diffusers.FlowMatchEulerDiscreteScheduler
+
 infer_args:
-  steps: 32
-  cfg_strength: 2.0
+  num_steps: 32
+  guidance_scale: 3.0
   sway_sampling_coef: -1
-  no_ref_audio: false
   seed: 2025
+  disable_progress: false
+  latent_shape: [null, 100]
+
+  # steps: 32
+  # cfg_strength: 2.0
+  # sway_sampling_coef: -1
+  # no_ref_audio: false

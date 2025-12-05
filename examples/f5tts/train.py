@@ -84,7 +84,9 @@ def main():
 
     config = setup_resume_cfg(config, do_print=state.is_main_process)
 
-    model: CountParamsBase = hydra.utils.instantiate(config["model"])
+    model: CountParamsBase = hydra.utils.instantiate(
+        config["model"], _convert_="all"
+    )
     train_dataloader = init_dataloader_from_config(config["train_dataloader"])
     val_dataloader = init_dataloader_from_config(config["val_dataloader"])
     optimizer = hydra.utils.instantiate(

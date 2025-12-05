@@ -529,6 +529,7 @@ class SinusPositionEmbedding(nn.Module):
         device = x.device
         half_dim = self.dim // 2
         emb = math.log(10000) / (half_dim - 1)
+        # a little different from UniFlow-Audio: `scale` here
         emb = torch.exp(torch.arange(half_dim, device=device).float() * -emb)
         emb = scale * x.unsqueeze(1) * emb.unsqueeze(0)
         emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
@@ -1026,6 +1027,180 @@ class DiT(nn.Module):
                 )
             else:
                 x = block(x, t, mask=mask, rope=rope)
+
+        if self.long_skip_connection is not None:
+            x = self.long_skip_connection(torch.cat((x, residual), dim=-1))
+
+        x = self.norm_out(x, t)
+        output = self.proj_out(x)
+
+        return output
+
+
+class InputFusionDiT(nn.Module):
+    def __init__(
+        self,
+        *,
+        in_dim,
+        out_dim,
+        embed_dim,
+        ta_content_dim,
+        depth=8,
+        heads=8,
+        dim_head=64,
+        dropout=0.1,
+        ff_mult=4,
+        qk_norm=None,
+        pe_attn_head=None,
+        attn_backend="torch",  # "torch" | "flash_attn"
+        attn_mask_enabled=False,
+        long_skip_connection=False,
+        checkpoint_activations=False,
+    ):
+        super().__init__()
+
+        self.time_embed = TimestepEmbedding(embed_dim)
+        # self.text_cond, self.text_uncond = None, None  # text cache
+        # self.input_embed = InputEmbedding(mel_dim, text_dim, dim)
+        self.input_proj = nn.Linear(in_dim + ta_content_dim, embed_dim)
+        self.input_pos_embed = ConvPositionEmbedding(dim=embed_dim)
+
+        self.rotary_embed = RotaryEmbedding(dim_head)
+
+        self.dim = embed_dim
+        self.depth = depth
+
+        self.transformer_blocks = nn.ModuleList([
+            DiTBlock(
+                dim=embed_dim,
+                heads=heads,
+                dim_head=dim_head,
+                ff_mult=ff_mult,
+                dropout=dropout,
+                qk_norm=qk_norm,
+                pe_attn_head=pe_attn_head,
+                attn_backend=attn_backend,
+                attn_mask_enabled=attn_mask_enabled,
+            ) for _ in range(depth)
+        ])
+        self.long_skip_connection = nn.Linear(
+            embed_dim * 2, embed_dim, bias=False
+        ) if long_skip_connection else None
+
+        self.norm_out = AdaLayerNorm_Final(embed_dim)  # final modulation
+        self.proj_out = nn.Linear(embed_dim, out_dim)
+
+        self.checkpoint_activations = checkpoint_activations
+
+        self.initialize_weights()
+
+    def initialize_weights(self):
+        # Zero-out AdaLN layers in DiT blocks:
+        for block in self.transformer_blocks:
+            nn.init.constant_(block.attn_norm.linear.weight, 0)
+            nn.init.constant_(block.attn_norm.linear.bias, 0)
+
+        # Zero-out output layers:
+        nn.init.constant_(self.norm_out.linear.weight, 0)
+        nn.init.constant_(self.norm_out.linear.bias, 0)
+        nn.init.constant_(self.proj_out.weight, 0)
+        nn.init.constant_(self.proj_out.bias, 0)
+
+    def ckpt_wrapper(self, module):
+        # https://github.com/chuanyangjin/fast-DiT/blob/main/models.py
+        def ckpt_forward(*inputs):
+            outputs = module(*inputs)
+            return outputs
+
+        return ckpt_forward
+
+    # def clear_cache(self):
+    #     self.text_cond, self.text_uncond = None, None
+
+    def input_fusion(
+        self,
+        x: float["b n d"],
+        x_mask: bool["b n"] | None,
+        time_aligned_content: float["b n d"],
+    ):
+        x = self.input_proj(torch.cat([x, time_aligned_content], dim=-1))
+        x = self.input_pos_embed(x, mask=x_mask) + x
+        return x
+
+    def forward(
+        self,
+        x: float["b n d"],  # nosied input audio
+        # masked_mel: float["b n d"],  # masked cond audio
+        # text_embed: int["b nt"],  # text
+        time: float["b"] | float[""],  # time step
+        x_mask: bool["b n"] | None = None,
+        time_aligned_content: float["b n d"] | None = None,
+        # drop_audio_cond: bool = False,  # cfg for cond audio
+        # drop_text: bool = False,  # cfg for text
+        # cfg_infer: bool = False,  # cfg inference, pack cond & uncond forward
+        # cache: bool = False,
+    ):
+
+        batch, seq_len = x.shape[0], x.shape[1]
+
+        x = self.input_fusion(x, x_mask, time_aligned_content)
+
+        if time.ndim == 0:
+            time = time.repeat(batch).to(x.device)
+
+        # t: conditioning time, text: text, x: noised audio + cond audio + text
+        t = self.time_embed(time)
+        # if cfg_infer:  # pack cond & uncond forward: b n d -> 2b n d
+        #     x_cond = self.get_input_embed(
+        #         x,
+        #         cond,
+        #         text,
+        #         drop_audio_cond=False,
+        #         drop_text=False,
+        #         cache=cache,
+        #         audio_mask=mask
+        #     )
+        #     x_uncond = self.get_input_embed(
+        #         x,
+        #         cond,
+        #         text,
+        #         drop_audio_cond=True,
+        #         drop_text=True,
+        #         cache=cache,
+        #         audio_mask=mask
+        #     )
+        #     x = torch.cat((x_cond, x_uncond), dim=0)
+        #     t = torch.cat((t, t), dim=0)
+        #     mask = torch.cat((mask, mask), dim=0) if mask is not None else None
+        # else:
+        #     x = self.get_input_embed(
+        #         x,
+        #         cond,
+        #         text,
+        #         drop_audio_cond=drop_audio_cond,
+        #         drop_text=drop_text,
+        #         cache=cache,
+        #         audio_mask=mask
+        #     )
+
+        rope = self.rotary_embed.forward_from_seq_len(seq_len)
+
+        if self.long_skip_connection is not None:
+            residual = x
+
+        for block in self.transformer_blocks:
+            if self.checkpoint_activations:
+                # https://pytorch.org/docs/stable/checkpoint.html#torch.utils.checkpoint.checkpoint
+                x = torch.utils.checkpoint.checkpoint(
+                    self.ckpt_wrapper(block),
+                    x,
+                    t,
+                    x_mask,
+                    rope,
+                    use_reentrant=False
+                )
+            else:
+                x = block(x, t, mask=x_mask, rope=rope)
 
         if self.long_skip_connection is not None:
             x = self.long_skip_connection(torch.cat((x, residual), dim=-1))

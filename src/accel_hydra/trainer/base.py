@@ -4,6 +4,7 @@ from typing import Literal, Any
 import shutil
 from pathlib import Path
 from dataclasses import dataclass
+from contextlib import contextmanager, nullcontext
 
 import numpy as np
 from tqdm import trange, tqdm
@@ -115,6 +116,7 @@ class Trainer(CheckpointMixin):
     early_stop: int | None = None
 
     # use_stateful_dataloader: bool = False
+    even_batches: bool = True
 
     def wrap_and_broadcast_value(self, value: Any) -> torch.Tensor:
         value = torch.tensor(value, device=self.accelerator.device)
@@ -144,7 +146,8 @@ class Trainer(CheckpointMixin):
                 tracker = self.logging_config.report_to
 
         # dataloader_config = DataLoaderConfiguration(
-        #     use_stateful_dataloader=self.use_stateful_dataloader
+        # use_stateful_dataloader=self.use_stateful_dataloader
+        # even_batches=self.even_batches
         # )
         self.accelerator = AcceleratorSaveTrainableParams(
             log_with=tracker,
@@ -156,6 +159,17 @@ class Trainer(CheckpointMixin):
             # dataloader_config=dataloader_config,
             kwargs_handlers=[ddp_kwargs]
         )
+
+        train_batch_sampler = self.train_dataloader.batch_sampler
+        if not hasattr(train_batch_sampler, "batch_size"):
+            assert self.even_batches is False, "even_batches must be False when batch_sampler does not have batch_size"
+
+            # due to this line: https://github.com/huggingface/accelerate/blob/main/src/accelerate/data_loader.py#L246
+            assert getattr(
+                train_batch_sampler, "drop_last", False
+            ) is True, "drop_last must be True when batch_sampler does not have batch_size"
+
+        self.accelerator.even_batches = self.even_batches
         # TODO when `loss_fn` does not have named_parameters/buffers, loading will raise error
         (
             self.train_dataloader,
@@ -189,6 +203,15 @@ class Trainer(CheckpointMixin):
     def validation_step(self, batch, batch_idx) -> None:
         ...
 
+    def get_context(self) -> contextmanager:
+        if self.even_batches:
+            return nullcontext()
+        else:
+            return self.accelerator.join_uneven_inputs(
+                [self.model],
+                even_batches=True,
+            )
+
     def val_loop(self) -> None:
         self.model.eval()
         torch.set_grad_enabled(False)
@@ -201,9 +224,11 @@ class Trainer(CheckpointMixin):
             disable=not self.accelerator.is_local_main_process
         )
 
-        for batch_idx, batch in enumerate(self.val_dataloader):
-            self.validation_step(batch, batch_idx)
-            pbar.update()
+        context_manager = self.get_context()
+        with context_manager:
+            for batch_idx, batch in enumerate(self.val_dataloader):
+                self.validation_step(batch, batch_idx)
+                pbar.update()
 
         pbar.close()
 
@@ -310,59 +335,61 @@ class Trainer(CheckpointMixin):
         else:
             range_iterator = range(epoch_steps)
 
-        for batch_idx in range_iterator:
-            try:
-                batch = next(self.train_data_iterator)
-            except StopIteration:
-                self.train_data_iterator = iter(self.train_dataloader)
-                batch = next(self.train_data_iterator)
+        context_manager = self.get_context()
+        with context_manager:
+            for batch_idx in range_iterator:
+                try:
+                    batch = next(self.train_data_iterator)
+                except StopIteration:
+                    self.train_data_iterator = iter(self.train_dataloader)
+                    batch = next(self.train_data_iterator)
 
-            with self.accelerator.accumulate(self.model):
-                loss = self.training_step(batch, batch_idx)
-                self.accelerator.log({"train/loss": loss.item()},
-                                     step=self.step)
-
-                self.accelerator.backward(loss)
-
-                # gradient clipping and logging
-                if self.accelerator.sync_gradients:
-                    if self.max_grad_norm:
-                        grad_norm = self.accelerator.clip_grad_norm_(
-                            self.model.parameters(), self.max_grad_norm
-                        )
-                    else:
-                        grad_norm = nn.utils.clip_grad_norm_(
-                            self.model.parameters(), float('inf')
-                        )
-                    self.accelerator.log({"train/grad_norm": grad_norm},
+                with self.accelerator.accumulate(self.model):
+                    loss = self.training_step(batch, batch_idx)
+                    self.accelerator.log({"train/loss": loss.item()},
                                          step=self.step)
 
-                self.optimizer.step()
-                if self.lr_scheduler_interval == LRSchedulerInterval.STEP:
-                    self.lr_scheduler.step()
-                self.optimizer.zero_grad()
+                    self.accelerator.backward(loss)
 
-            self.step += 1
+                    # gradient clipping and logging
+                    if self.accelerator.sync_gradients:
+                        if self.max_grad_norm:
+                            grad_norm = self.accelerator.clip_grad_norm_(
+                                self.model.parameters(), self.max_grad_norm
+                            )
+                        else:
+                            grad_norm = nn.utils.clip_grad_norm_(
+                                self.model.parameters(), float('inf')
+                            )
+                        self.accelerator.log({"train/grad_norm": grad_norm},
+                                             step=self.step)
 
-            if self.save_every_n_steps:
-                should_save_checkpoint = self.step % self.save_every_n_steps == 0
-                if should_save_checkpoint:
-                    self.save_checkpoint(
-                        self.checkpoint_dir / f"step_{self.step}"
-                    )
+                    self.optimizer.step()
+                    if self.lr_scheduler_interval == LRSchedulerInterval.STEP:
+                        self.lr_scheduler.step()
+                    self.optimizer.zero_grad()
 
-            # FIXME `self.epoch` may be not set properly at this step
-            if self.permanent_save_every_n_steps:
-                should_save_checkpoint = self.step % self.permanent_save_every_n_steps == 0
-                if should_save_checkpoint:
-                    # if self.step % self.epoch_length == 0:
-                    #     self.epoch += 1
-                    self.save_checkpoint(
-                        self.project_dir / f"ckpt_step_{self.step}",
-                        clean_old_checkpoints=False
-                    )
-                    # if self.step % self.epoch_length == 0:
-                    #     self.epoch -= 1
+                self.step += 1
+
+                if self.save_every_n_steps:
+                    should_save_checkpoint = self.step % self.save_every_n_steps == 0
+                    if should_save_checkpoint:
+                        self.save_checkpoint(
+                            self.checkpoint_dir / f"step_{self.step}"
+                        )
+
+                # FIXME `self.epoch` may be not set properly at this step
+                if self.permanent_save_every_n_steps:
+                    should_save_checkpoint = self.step % self.permanent_save_every_n_steps == 0
+                    if should_save_checkpoint:
+                        # if self.step % self.epoch_length == 0:
+                        #     self.epoch += 1
+                        self.save_checkpoint(
+                            self.project_dir / f"ckpt_step_{self.step}",
+                            clean_old_checkpoints=False
+                        )
+                        # if self.step % self.epoch_length == 0:
+                        #     self.epoch -= 1
 
         self.val_loop()
         self.epoch += 1
@@ -423,7 +450,7 @@ class Trainer(CheckpointMixin):
             self.epoch_length = len(self.train_dataloader)
         self.train_data_iterator = iter(self.train_dataloader)
 
-        self.accelerator.print(f"training start ............")
+        self.accelerator.print("training start ............")
         if self.logging_config is not None:
             self.accelerator.init_trackers(
                 self.logging_config.project,
@@ -438,7 +465,7 @@ class Trainer(CheckpointMixin):
             )
 
     def on_train_end(self) -> None:
-        self.accelerator.print(f"training end ............")
+        self.accelerator.print("training end ............")
         self.accelerator.end_training()
         # wandb sometimes stuck in finishing
         if wandb.run is not None:

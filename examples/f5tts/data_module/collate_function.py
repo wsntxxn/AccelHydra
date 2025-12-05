@@ -34,3 +34,15 @@ class F5Collate:
             text=text,
             text_lengths=text_lengths,
         )
+
+
+@dataclass
+class F5CollateWithoutRename(F5Collate):
+    def __call__(self, batch: dict) -> dict:
+        output = super().__call__(batch)
+        return {
+            "mel_spec": output["inp"],
+            "mel_spec_lengths": output["lens"],
+            "text": output["text"],
+            "text_lengths": output["text_lengths"]
+        }

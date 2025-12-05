@@ -1,3 +1,8 @@
+defaults:
+  - _self_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
 vocoder: "bigvgan"
 tokenizer_path: "/mnt/shared-storage-user/xuxuenan/workspace/f5tts/data/LibriTTS_100_360_500_char/vocab.txt"
 tokenizer: "char"
@@ -8,18 +13,3 @@ hydra:
   output_subdir: null
   run:
     dir: .
-  job_logging:
-    version: 1
-    formatters:
-      simple:
-        format: '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
-    handlers:
-      console:
-        class: logging.StreamHandler
-        formatter: simple
-        stream: ext://sys.stdout
-    root:
-      level: INFO
-      handlers:
-      - console
-    disable_existing_loggers: false

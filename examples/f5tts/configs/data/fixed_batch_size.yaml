@@ -1,0 +1,3 @@
+batch_size: 32  # per device batch size
+batch_sampler: null
+even_batches: true

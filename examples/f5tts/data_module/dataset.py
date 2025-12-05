@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass, field
 
 import numpy as np
 import torch
@@ -10,56 +11,51 @@ from utils.general import default
 from utils.audio import MelSpec
 
 
+@dataclass
 class CustomDataset(torch.utils.data.Dataset):
-    def __init__(
-        self,
-        # custom_dataset: Dataset,
-        hf_data_raw_path: str,
-        duration_path: str,
-        # durations=None,
-        target_sample_rate=24_000,
-        hop_length=256,
-        n_mel_channels=100,
-        n_fft=1024,
-        win_length=1024,
-        mel_spec_type="vocos",
-        preprocessed_mel=False,
-        mel_spec_module: nn.Module | None = None,
-        max_samples: int | None = None,
-    ):
-        # self.data = custom_dataset
-        # self.durations = durations
-        self.data = Dataset.from_file(hf_data_raw_path)
-        if max_samples is not None:
-            slice_indexes = np.random.randint(0, len(self.data), max_samples)
+
+    # TODO minimum duration grouping transform
+    hf_data_raw_path: str
+    duration_path: str
+    min_duration: float = field(default=0.3)
+    max_duration: float = field(default=30.0)
+    target_sample_rate: int = field(default=24_000)
+
+    hop_length: int = field(default=256)
+    n_mel_channels: int = field(default=100)
+    n_fft: int = field(default=1024)
+    win_length: int = field(default=1024)
+    mel_spec_type: str = field(default="vocos")
+    preprocessed_mel: bool = field(default=False)
+    mel_spec_module: nn.Module | None = field(default=None)
+    max_samples: int | None = field(default=None)
+
+    def __post_init__(self):
+        self.data = Dataset.from_file(self.hf_data_raw_path)
+        if self.max_samples is not None:
+            slice_indexes = np.random.randint(
+                0, len(self.data), self.max_samples
+            )
             self.data = self.data.select(slice_indexes)
-        with open(duration_path, "r", encoding="utf-8") as f:
-            self.durations = json.load(f)
+        with open(self.duration_path, "r", encoding="utf-8") as f:
+            self.durations = json.load(f)["duration"]
 
-        self.target_sample_rate = target_sample_rate
-        self.hop_length = hop_length
-        self.n_fft = n_fft
-        self.win_length = win_length
-        self.mel_spec_type = mel_spec_type
-        self.preprocessed_mel = preprocessed_mel
-
-        if not preprocessed_mel:
+        if not self.preprocessed_mel:
             self.mel_spectrogram = default(
-                mel_spec_module,
+                self.mel_spec_module,
                 MelSpec(
-                    n_fft=n_fft,
-                    hop_length=hop_length,
-                    win_length=win_length,
-                    n_mel_channels=n_mel_channels,
-                    target_sample_rate=target_sample_rate,
-                    mel_spec_type=mel_spec_type,
+                    n_fft=self.n_fft,
+                    hop_length=self.hop_length,
+                    win_length=self.win_length,
+                    n_mel_channels=self.n_mel_channels,
+                    target_sample_rate=self.target_sample_rate,
+                    mel_spec_type=self.mel_spec_type,
                 ),
             )
 
-    def get_frame_len(self, index):
-        if (
-            self.durations is not None
-        ):  # Please make sure the separately provided durations are correct, otherwise 99.99% OOM
+    def get_length(self, index):
+        if (self.durations is not None):
+            # Please make sure the separately provided durations are correct, otherwise 99.99% OOM
             return self.durations[index
                                  ] * self.target_sample_rate / self.hop_length
         return self.data[index]["duration"
@@ -76,7 +72,7 @@ class CustomDataset(torch.utils.data.Dataset):
             duration = row["duration"]
 
             # filter by given length
-            if 0.3 <= duration <= 30:
+            if self.min_duration <= duration <= self.max_duration:
                 break  # valid
 
             index = (index + 1) % len(self.data)
@@ -105,3 +101,32 @@ class CustomDataset(torch.utils.data.Dataset):
             "mel_spec": mel_spec,
             "text": text,
         }
+
+
+class MinimumDurationGroupingDataset(CustomDataset):
+
+    group_duration: float = field(default=12.0)
+
+    def __post_init__(self):
+        super().__post_init__()
+        groups = []
+        group_durations = []
+        current_group = []
+        current_sum = 0.0
+
+        for idx in range(len(self.durations)):
+            duration = self.durations[idx]
+            current_group.append(idx)
+            current_sum += duration
+            if current_sum >= self.group_duration:
+                groups.append(current_group)
+                current_group = []
+                current_sum = 0.0
+                group_durations.append(current_sum)
+
+        if current_group:
+            groups.append(current_group)
+            group_durations.append(current_sum)
+
+        self.durations = group_durations
+        self.groups = groups

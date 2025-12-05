@@ -1,0 +1,8 @@
+batch_size: 1  # required by DataLoader initialization
+batch_sampler:
+  _target_: data_module.batch_sampler.SortedDynamicBatchSampler
+  batch_length_threshold: 38400
+  max_samples: 64
+  random_seed: 666
+  drop_last: true
+even_batches: false
