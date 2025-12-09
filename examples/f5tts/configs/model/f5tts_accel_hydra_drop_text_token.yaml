@@ -1,4 +1,4 @@
-_target_: models.flow_matching.F5TTSTextDropFlowMatching
+_target_: models.flow_matching.F5TTSDropTextTokenFlowMatching
 text_encoder:
   _target_: models.text_encoder.ConvNeXtTextEncoder
   text_num_embeds: ${get_vocab_size:${tokenizer_path},${tokenizer}}
@@ -10,6 +10,7 @@ text_encoder:
 cfg_drop_config:
   masked_mel: 0.3
   text_embed: 0.2
+sample_strategy: uniform
 tokenizer_path: ${tokenizer_path}
 tokenizer: ${tokenizer}
 backbone:

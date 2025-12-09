@@ -20,9 +20,9 @@ from torch import nn
 from torch.nn.utils.rnn import pad_sequence
 from torchdiffeq import odeint
 from diffusers.utils.torch_utils import randn_tensor
-from diffusers import FlowMatchEulerDiscreteScheduler
+# from diffusers import FlowMatchEulerDiscreteScheduler
 from diffusers.training_utils import compute_density_for_timestep_sampling
-from tqdm import tqdm
+# from tqdm import tqdm
 from accel_hydra.utils.torch import create_mask_from_length as lens_to_mask
 from accel_hydra.models.common import CountParamsBase, LoadPretrainedBase
 
@@ -353,7 +353,7 @@ class FlowMatchingMixin:
     def __init__(
         self,
         cfg_drop_ratio: float = 0.2,
-        sample_strategy: str = 'normal',
+        sample_strategy: str = 'uniform',
         num_train_steps: int = 1000
     ) -> None:
         r"""
@@ -460,7 +460,7 @@ class MultiConditionFlowMatchingMixin(FlowMatchingMixin):
     def __init__(
         self,
         cfg_drop_config: dict | float,
-        sample_strategy: str = "normal",
+        sample_strategy: str = "uniform",
         num_train_steps: int = 1000
     ) -> None:
         super().__init__(
@@ -488,7 +488,7 @@ class MultiConditionFlowMatchingMixin(FlowMatchingMixin):
         return content_dict
 
 
-class F5TTSFlowMatching(
+class F5TTSDropTextEmbeddingFlowMatching(
     MultiConditionFlowMatchingMixin, LoadPretrainedBase, CountParamsBase
 ):
     def __init__(
@@ -498,7 +498,7 @@ class F5TTSFlowMatching(
         tokenizer_path: str,
         tokenizer: str = "char",
         cfg_drop_config: dict | float | None = None,
-        sample_strategy: str = "normal",
+        sample_strategy: str = "uniform",
         num_train_steps: int = 1000,
         frac_lengths_mask: tuple[float, float] = (0.7, 1.0),
     ) -> None:
@@ -798,7 +798,7 @@ class F5TTSFlowMatching(
         return mel_spec_generated
 
 
-class F5TTSTextDropFlowMatching(F5TTSFlowMatching):
+class F5TTSDropTextTokenFlowMatching(F5TTSDropTextEmbeddingFlowMatching):
     def encode_text(
         self,
         text: torch.Tensor,

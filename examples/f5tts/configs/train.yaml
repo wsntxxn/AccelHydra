@@ -7,7 +7,7 @@ defaults:
 
 n_mel_channels: 100
 
-exp_name: f5tts_base_libritts_drop_text
+exp_name: f5tts_base_libritts_text_embedding_mask
 exp_dir: experiments/${exp_name}/
 logging_file: ${exp_dir}/train.log
 
@@ -68,8 +68,8 @@ lr_scheduler:
   _target_: "transformers.get_scheduler"
   name: "linear"
 
-epochs: 500
-epoch_length: Null
+epochs: 300
+epoch_length: 2000
 
 trainer:
   _target_: trainer.f5tts_trainer.F5TTSTrainer

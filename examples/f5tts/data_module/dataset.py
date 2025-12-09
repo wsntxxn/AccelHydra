@@ -6,13 +6,28 @@ import torch
 import torch.nn as nn
 import torchaudio
 from datasets import Dataset
+from accel_hydra.utils.general import read_jsonl_to_mapping
 
 from utils.general import default
 from utils.audio import MelSpec
 
 
+class AudioLoadingMixin:
+    def load_audio(
+        self, audio_path: str, target_sample_rate: int
+    ) -> torch.Tensor:
+        audio, source_sample_rate = torchaudio.load(audio_path)
+        if audio.shape[0] > 1:
+            audio = torch.mean(audio, dim=0, keepdim=True)
+        if source_sample_rate != target_sample_rate:
+            audio = torchaudio.functional.resample(
+                audio, source_sample_rate, target_sample_rate
+            )
+        return audio
+
+
 @dataclass
-class CustomDataset(torch.utils.data.Dataset):
+class CustomDataset(torch.utils.data.Dataset, AudioLoadingMixin):
 
     # TODO minimum duration grouping transform
     hf_data_raw_path: str
@@ -80,19 +95,7 @@ class CustomDataset(torch.utils.data.Dataset):
         if self.preprocessed_mel:
             mel_spec = torch.tensor(row["mel_spec"])
         else:
-            audio, source_sample_rate = torchaudio.load(audio_path)
-
-            # make sure mono input
-            if audio.shape[0] > 1:
-                audio = torch.mean(audio, dim=0, keepdim=True)
-
-            # resample if necessary
-            if source_sample_rate != self.target_sample_rate:
-                resampler = torchaudio.transforms.Resample(
-                    source_sample_rate, self.target_sample_rate
-                )
-                audio = resampler(audio)
-
+            audio = self.load_audio(audio_path, self.target_sample_rate)
             # to mel spectrogram
             mel_spec = self.mel_spectrogram(audio)
             mel_spec = mel_spec.squeeze(0)  # '1 d t -> d t'
@@ -103,6 +106,82 @@ class CustomDataset(torch.utils.data.Dataset):
         }
 
 
+@dataclass
+class CrossSentenceTTSDataset(torch.utils.data.Dataset, AudioLoadingMixin):
+
+    cross_sentence_meta: str
+    audio_mapping: str
+
+    target_sample_rate: int = field(default=24_000)
+    hop_length: int = field(default=256)
+    n_mel_channels: int = field(default=100)
+    n_fft: int = field(default=1024)
+    win_length: int = field(default=1024)
+    mel_spec_type: str = field(default="vocos")
+    preprocessed_mel: bool = field(default=False)
+    mel_spec_module: nn.Module | None = field(default=None)
+
+    def __post_init__(self):
+        self.aid_to_audio = read_jsonl_to_mapping(
+            self.audio_mapping, "audio_id", "audio"
+        )
+        self.data = []
+        with open(self.cross_sentence_meta, "r") as reader:
+            for line in reader.readlines():
+                prompt_audio_id, prompt_duration, prompt_text, \
+                    audio_id, duration, text = line.strip().split("\t")
+                self.data.append({
+                    "prompt_audio_id": prompt_audio_id,
+                    "audio_id": audio_id,
+                    "prompt_text": prompt_text,
+                    "text": text,
+                })
+
+        self.mel_spectrogram = default(
+            self.mel_spec_module,
+            MelSpec(
+                n_fft=self.n_fft,
+                hop_length=self.hop_length,
+                win_length=self.win_length,
+                n_mel_channels=self.n_mel_channels,
+                target_sample_rate=self.target_sample_rate,
+                mel_spec_type=self.mel_spec_type,
+            ),
+        )
+
+    def __getitem__(self, index):
+        item = self.data[index]
+        prompt_audio_id = item["prompt_audio_id"]
+        audio_id = item["audio_id"]
+        prompt_text = item["prompt_text"]
+        text = item["text"]
+
+        audio_path = self.aid_to_audio[audio_id]
+        audio = self.load_audio(audio_path, self.target_sample_rate)
+        # to mel spectrogram
+        mel_spec = self.mel_spectrogram(audio)
+        mel_spec = mel_spec.squeeze(0)  # '1 d t -> d t'
+
+        prompt_audio_path = self.aid_to_audio[prompt_audio_id]
+        prompt_audio = self.load_audio(
+            prompt_audio_path, self.target_sample_rate
+        )
+        prompt_mel_spec = self.mel_spectrogram(prompt_audio)
+        prompt_mel_spec = prompt_mel_spec.squeeze(0)  # '1 d t -> d t'
+
+        return {
+            "audio_id": audio_id,
+            "prompt_mel_spec": prompt_mel_spec,
+            "mel_spec": mel_spec,
+            "text": text,
+            "prompt_text": prompt_text,
+        }
+
+    def __len__(self):
+        return len(self.data)
+
+
+@dataclass
 class MinimumDurationGroupingDataset(CustomDataset):
 
     group_duration: float = field(default=12.0)

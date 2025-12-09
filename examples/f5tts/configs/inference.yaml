@@ -13,14 +13,19 @@ vocoder:
   is_local: true
   local_path: "/mnt/shared-storage-user/brainllm-share/checkpoints/bigvgan_v2_24khz_100band_256x"
 
-target_rms: 0.1
-# target_duration: 7.0
+# target_rms: 0.1
+# target_duration: 6.5
 
-# text: "this function's implementation will be changed to use torchaudio. We recommend that you port your code to rely directly on codec"
-text: "this function's implementation will be changed to use torchaudio. We recommend that you port your code to rely directly on codec"
-prompt_text: "\"Bring the light in here!\" he commanded eagerly, as he once more entered the hut."
-prompt_speech: "/mnt/shared-storage-user/brainllm-share/data/LibriTTS/train-clean-100/7635/105409/7635_105409_000053_000000.wav"
-output_fname: "output.wav"
+
+test_dataloader:
+  _target_: torch.utils.data.DataLoader
+  dataset:
+    _target_: data_module.dataset.CrossSentenceTTSDataset
+    cross_sentence_meta: /mnt/shared-storage-user/xuxuenan/workspace/f5tts/data/librispeech_pc_test_clean_cross_sentence.lst
+    audio_mapping: /mnt/shared-storage-user/xuxuenan/workspace/uniflow_audio/data/librispeech_pc/audio.jsonl
+  batch_size: 1
+  shuffle: False
+  num_workers: 4
 
 # noise_scheduler:
 #   type: diffusers.FlowMatchEulerDiscreteScheduler
