@@ -7,7 +7,13 @@ import hydra
 from omegaconf import OmegaConf
 from accelerate.state import PartialState
 
-from accel_hydra.utils.config import register_omegaconf_resolvers
+from accel_hydra import Trainer
+from accel_hydra.models import CountParamsBase
+from accel_hydra.utils import (
+    register_omegaconf_resolvers,
+    setup_resume_cfg,
+    init_dataloader_from_config,
+)
 from accel_hydra.utils.lr_scheduler import (
     get_warmup_steps,
     get_dataloader_one_pass_outside_steps,
@@ -16,10 +22,6 @@ from accel_hydra.utils.lr_scheduler import (
     get_dataloader_one_pass_steps_inside_accelerator,
     lr_scheduler_param_adapter,
 )
-from accel_hydra.models.common import CountParamsBase
-from accel_hydra.trainer import Trainer
-from accel_hydra.utils.data import init_dataloader_from_config
-from accel_hydra.utils.general import setup_resume_cfg
 
 register_omegaconf_resolvers()
 
@@ -36,20 +38,26 @@ def main():
     parse_config_from_command_line()
     config = configs[0]
 
-    if config.get("cfg_only", False):
-        with open("./config.yaml", "w") as f:
-            OmegaConf.save(config, f)
-            print(f'config.yaml saved to {f.name}')
-            return
-
-    config = setup_resume_cfg(config)
-
     # helper state for accessing information about the current training environment
     state = PartialState()
 
-    model: CountParamsBase = hydra.utils.instantiate(config["model"])
+    if config.get("dump_config", None) is not None:
+        if state.is_main_process:
+            with open(config["dump_config"], "w") as f:
+                OmegaConf.save(config, f)
+                print(f'config.yaml saved to {f.name}')
+        return
+
+    config = setup_resume_cfg(config, do_print=state.is_main_process)
+
+    model: CountParamsBase = hydra.utils.instantiate(
+        config["model"], _convert_="all"
+    )
     train_dataloader = init_dataloader_from_config(config["train_dataloader"])
-    val_dataloader = init_dataloader_from_config(config["val_dataloader"])
+    if "val_dataloader" in config and config["val_dataloader"] is not None:
+        val_dataloader = init_dataloader_from_config(config["val_dataloader"])
+    else:
+        val_dataloader = None
     optimizer = hydra.utils.instantiate(
         config["optimizer"], params=model.parameters(), _convert_="all"
     )
@@ -77,20 +85,23 @@ def main():
         config["gradient_accumulation_steps"], state.num_processes
     )
 
-    num_warmup_steps = get_warmup_steps(
-        **config["warmup_params"],
-        dataloader_one_pass_outside_steps=dataloader_one_pass_outside_steps
-    )
-    num_warmup_updates = get_steps_inside_accelerator_from_outside_steps(
-        num_warmup_steps, dataloader_one_pass_outside_steps,
-        dataloader_one_pass_steps_inside_accelerator,
-        config["gradient_accumulation_steps"], state.num_processes
-    )
+    if "warmup_params" in config:
+        num_warmup_steps = get_warmup_steps(
+            **config["warmup_params"],
+            dataloader_one_pass_outside_steps=dataloader_one_pass_outside_steps
+        )
+        num_warmup_updates = get_steps_inside_accelerator_from_outside_steps(
+            num_warmup_steps, dataloader_one_pass_outside_steps,
+            dataloader_one_pass_steps_inside_accelerator,
+            config["gradient_accumulation_steps"], state.num_processes
+        )
+    else:
+        num_warmup_updates = None
 
     lr_scheduler_config = lr_scheduler_param_adapter(
         config_dict=config["lr_scheduler"],
         num_training_steps=num_training_updates,
-        num_warmup_steps=num_warmup_updates
+        num_warmup_steps=num_warmup_updates,
     )
 
     lr_scheduler = hydra.utils.instantiate(

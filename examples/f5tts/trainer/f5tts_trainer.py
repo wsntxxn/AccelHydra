@@ -73,8 +73,6 @@ class F5TTSTrainer(Trainer):
         for loss_name in loss_dict:
             self.val_loss_dict[loss_name] += loss_dict[loss_name].item()
         self.val_batch_num += 1
-        #  if loss_dict["local_duration_loss"] != 0.0:
-            #  self.val_time_aligned_batch_num += 1
 
     def get_val_metrics(self):
         metric_name = self.metric_monitor.metric_name
@@ -89,13 +87,6 @@ class F5TTSTrainer(Trainer):
         val_loss = self.val_loss_dict["loss"] / self.val_batch_num
         log_dict = {}
         for loss_name in self.val_loss_dict:
-            # if loss_name == "local_duration_loss":
-            #     if self.val_time_aligned_batch_num == 0:
-            #         log_dict[f"val/{loss_name}"] = 0.0
-            #     else:
-            #         log_dict[f"val/{loss_name}"] = self.val_loss_dict[
-            #             loss_name] / self.val_time_aligned_batch_num
-            # else:
             log_dict[f"val/{loss_name}"
                     ] = self.val_loss_dict[loss_name] / self.val_batch_num
         self.accelerator.log(

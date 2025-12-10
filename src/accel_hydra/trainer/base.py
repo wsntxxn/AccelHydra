@@ -96,7 +96,7 @@ class Trainer(CheckpointMixin):
     logging_config: LoggingConfig | None = None
 
     train_dataloader: DataLoader
-    val_dataloader: DataLoader
+    val_dataloader: DataLoader | None
     model: nn.Module
     optimizer: torch.optim.Optimizer
     lr_scheduler: torch.optim.lr_scheduler.LRScheduler
@@ -173,17 +173,17 @@ class Trainer(CheckpointMixin):
         # TODO when `loss_fn` does not have named_parameters/buffers, loading will raise error
         (
             self.train_dataloader,
-            self.val_dataloader,
             self.model,
             self.optimizer,
             self.lr_scheduler,
         ) = self.accelerator.prepare(
             self.train_dataloader,
-            self.val_dataloader,
             self.model,
             self.optimizer,
             self.lr_scheduler,
         )
+        if self.val_dataloader is not None:
+            self.val_dataloader = self.accelerator.prepare(self.val_dataloader)
         self.accelerator.register_for_checkpointing(self)
         for checkpoint_object in self.checkpoint_objects:
             self.accelerator.register_for_checkpointing(checkpoint_object)
@@ -391,7 +391,11 @@ class Trainer(CheckpointMixin):
                         # if self.step % self.epoch_length == 0:
                         #     self.epoch -= 1
 
-        self.val_loop()
+        if self.val_dataloader is not None:
+            self.val_loop()
+        else:
+            self.accelerator.print("No validation data, skipping validation")
+
         self.epoch += 1
 
         if self.lr_scheduler_interval == LRSchedulerInterval.EPOCH:

@@ -1,7 +1,9 @@
 from typing import Any
 import math
 import copy
+import inspect
 from torch.utils.data import DataLoader
+from hydra.utils import get_method
 
 
 def get_warmup_steps(
@@ -133,7 +135,7 @@ def get_steps_inside_accelerator_from_outside_steps(
     # `gradient_accumulation_steps` steps:
     # https://github.com/huggingface/accelerate/blob/main/src/accelerate/scheduler.py#L76
     total_steps = (
-        num_dataloader_epochs_passed*
+        num_dataloader_epochs_passed *
         dataloader_one_pass_steps_inside_accelerator +
         remaining_inside_accelerator_steps
     )
@@ -141,14 +143,27 @@ def get_steps_inside_accelerator_from_outside_steps(
 
 
 def lr_scheduler_param_adapter(
-    config_dict: dict[str, Any], num_training_steps: int, num_warmup_steps: int
+    config_dict: dict[str, Any],
+    num_training_steps: int,
+    num_warmup_steps: int | None,
 ) -> dict[str, Any]:
     target_class = config_dict["_target_"]
     return_dict = copy.deepcopy(config_dict)
-    if target_class == "transformers.get_scheduler":
-        return_dict.update({
-            "num_training_steps": num_training_steps,
-            "num_warmup_steps": num_warmup_steps
-        })
+    target_cls = get_method(target_class)
+
+    if inspect.isclass(target_cls):
+        init_params = inspect.signature(target_cls.__init__).parameters
+    elif inspect.isfunction(target_cls):
+        init_params = inspect.signature(target_cls).parameters
+    else:
+        raise ValueError(f"{target_class} is not a class or function")
+
+    if "steps_per_epoch" in init_params:
+        return_dict["steps_per_epoch"] = num_training_steps
+    elif "num_training_steps" in init_params:  # transformers.get_scheduler
+        return_dict["num_training_steps"] = num_training_steps
+
+    if "num_warmup_steps" in init_params:
+        return_dict["num_warmup_steps"] = num_warmup_steps
 
     return return_dict

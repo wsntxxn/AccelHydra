@@ -1,0 +1,64 @@
+defaults:
+  - basic
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+  - _self_
+
+seed: 42
+exp_name: mnist
+exp_dir: experiments/${exp_name}
+epochs: 10
+epoch_length: Null
+gradient_accumulation_steps: 4
+
+train_dataloader:
+  _target_: torch.utils.data.DataLoader
+  dataset:
+    _target_: data.train_dataset
+    data_root: ${data_root}
+  batch_size: 128
+  shuffle: true
+  num_workers: 4
+
+val_dataloader:
+  _target_: torch.utils.data.DataLoader
+  dataset:
+    _target_: data.val_dataset
+    data_root: ${data_root}
+  batch_size: 128
+
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 0.0001
+
+lr_scheduler:
+  _target_: torch.optim.lr_scheduler.OneCycleLR
+  max_lr: 0.0025
+  epochs: ${epochs}
+
+model:
+  _target_: model.Model
+
+loss_fn:
+  _target_: torch.nn.CrossEntropyLoss
+
+trainer:
+  _target_: trainer.MnistTrainer
+  project_dir: ${exp_dir}
+  logging_config:
+    _target_: accel_hydra.trainer.LoggingConfig
+    report_to: tensorboard
+    project: runs
+    save_dir: ${exp_dir}
+    name: ${exp_name}
+  gradient_accumulation_steps: ${gradient_accumulation_steps}
+  epochs: ${epochs}
+  epoch_length: ${epoch_length}
+  save_every_n_steps: 500
+  save_every_n_epochs: 1
+  save_last_k: 2
+  metric_monitor:
+    _target_: accel_hydra.MetricMonitor
+    metric_name: accuracy
+    mode: max
+
