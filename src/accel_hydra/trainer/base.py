@@ -17,7 +17,8 @@ from accelerate import DistributedDataParallelKwargs
 import wandb
 from swanlab.integration.accelerate import SwanLabTracker
 
-from accel_hydra.utils.accelerate import AcceleratorSaveTrainableParams
+from ..utils.accelerate import AcceleratorSaveTrainableParams
+from ..utils import is_package_available
 
 
 @dataclass(kw_only=True)
@@ -28,6 +29,18 @@ class LoggingConfig:
     name: str
     resume_id: str | None = None
     workspace: str | None = None  # organization name in SwanLab
+
+    def __post_init__(self):
+        self.supported_loggers = ("wandb", "swanlab", "tensorboard")
+        if self.report_to not in self.supported_loggers:
+            raise ValueError(
+                f"Unsupported logger: {self.report_to}. Supported loggers are {self.supported_loggers}."
+            )
+
+        if not is_package_available(self.report_to):
+            raise ValueError(
+                f"{self.report_to} is not installed. Please install {self.report_to} using `pip install {self.report_to}`."
+            )
 
 
 class LRSchedulerInterval(str, Enum):
