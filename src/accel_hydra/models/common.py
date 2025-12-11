@@ -13,19 +13,18 @@ class LoadPretrainedBase(nn.Module):
         """
         Custom processing functions of each model that transforms `state_dict` loaded from 
         checkpoints to the state that can be used in `load_state_dict`.
-        Use `merge_mathced_keys` to update parameters with matched names and shapes by 
-        default.  
+        Use `merge_mathced_keys` to update parameters with matched names and shapes by default.
 
-        Args
+        Args:
             model_dict:
                 The state dict of the current model, which is going to load pretrained parameters
             state_dict:
                 A dictionary of parameters from a pre-trained model.
 
-            Returns:
-                dict[str, torch.Tensor]:
-                    The updated state dict, where parameters with matched keys and shape are 
-                    updated with values in `state_dict`.      
+        Returns:
+            dict[str, torch.Tensor]:
+                The updated state dict, where parameters with matched keys and shape are 
+                updated with values in `state_dict`.
         """
         state_dict = merge_matched_keys(model_dict, state_dict)
         return state_dict

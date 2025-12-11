@@ -147,6 +147,21 @@ def lr_scheduler_param_adapter(
     num_training_steps: int,
     num_warmup_steps: int | None,
 ) -> dict[str, Any]:
+    """
+    Adapter function to adapt the parameters of the LR scheduler to the number of training steps and warmup steps.
+
+    Args:
+        config_dict:
+            The configuration dictionary of the LR scheduler.
+        num_training_steps:
+            The number of training steps.
+        num_warmup_steps:
+            The number of warmup steps.
+
+    Returns:
+        dict[str, Any]:
+            The adapted configuration dictionary of the LR scheduler.
+    """
     target_class = config_dict["_target_"]
     return_dict = copy.deepcopy(config_dict)
     target_cls = get_method(target_class)

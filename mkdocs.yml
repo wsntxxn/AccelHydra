@@ -1,0 +1,50 @@
+site_name: AccelHydra
+site_description: A lightweight, configurable and modular training framework based on Accelerate and Hydra
+site_url: https://wsntxxn.github.io/AccelHydra
+
+theme:
+  # name: material
+  name: readthedocs
+  features:
+    - navigation.tabs
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      toggle:
+        icon: material/lightbulb
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - scheme: slate
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Getting Started: getting_started.md
+  - Trainer: trainer.md
+  - Configuration Guide: config_guide.md
+  - API Reference: api_reference.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search:
+      lang: en
+  - autorefs
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src/accel_hydra]
+          show_signature: true

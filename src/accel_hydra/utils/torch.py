@@ -29,10 +29,10 @@ def merge_matched_keys(
 ) -> dict[str, torch.Tensor]:
     """
     Args:
-    model_dict:
-        The state dict of the current model, which is going to load pretrained parameters
-    state_dict:
-        A dictionary of parameters from a pre-trained model.
+        model_dict:
+            The state dict of the current model, which is going to load pretrained parameters
+        state_dict:
+            A dictionary of parameters from a pre-trained model.
 
     Returns:
         dict[str, torch.Tensor]:
@@ -152,7 +152,7 @@ def concat_non_padding(
     mask2: torch.BoolTensor,
 ) -> tuple[torch.Tensor, torch.BoolTensor, torch.LongTensor]:
     """
-    Args
+    Args:
         seq1 : Tensor (B, L1, E)
             First sequence.
         mask1 : BoolTensor (B, L1)
@@ -162,7 +162,7 @@ def concat_non_padding(
         mask2 : BoolTensor (B, L2)
             True for valid tokens in seq2, False for padding.
 
-    Returns
+    Returns:
         concat_seq : Tensor (B, L1+L2, E)
             Both sequences concatenated; valid tokens are left-aligned,
             padding on the right is 0.

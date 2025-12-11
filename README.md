@@ -12,10 +12,10 @@
 
 </div>
 
-## Introduction
+## :sparkles: Introduction
 
 
-### What is AccelHydra?
+### :thinking: What is AccelHydra?
 
 A **lightweight, configurable** and **modular** training framework based on [Accelerate](https://github.com/huggingface/accelerate) and [Hydra](https://github.com/facebookresearch/hydra).
 
@@ -29,20 +29,20 @@ It **IS NOT**:
 * a package including various state-of-the-art model implementations.
 * an inference-time accelerating or memory-reducing toolkit.
 
-### Why you might want to use AccelHydra?
+### :bulb: Why you might want to use AccelHydra?
 
 * Avoid writing boilerplates every time. The training loop and some utility functions remain almost the same across different projects, so we take them out as a basic library.
 * The functionality of config loading is managed by Hydra, while distributed training is managed by Accelerate, so you don't need to worry about these details.
 * Maintain **a moderate level of abstraction**. Great libraries like [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable/) and [Transformers](https://huggingface.co/docs/transformers/index) are powerful, but their codebases are too deep for newcomers to understand, or lack convenient interface to modify. We don't want a `Trainer` with dozens of inheritence layers, nor a single `train.py` with all logics in thousands of lines. 
 * Similar codebases can be found: [lightning-hydra-template](https://github.com/ashleve/lightning-hydra-template/), [lightning-accelerate](https://github.com/hoang1007/lightning-accelerate). However, task-specific codes and base codes (base classes and utility functions) should be separated to continuously fix bugs in base codes. Therefore the principle here is to only integrate generic codes into the library, instead of codes designed for specific tasks (CV, NLP, RL, ...)
 
-### Why you might not want to use AccelHydra?
+### :warning: Why you might not want to use AccelHydra?
 
 * Overriding may sometimes become complicated for Hydra. Breaking training configs into different components make things clear, but it may also fail from time to time.
 * Efficiency consideration. This library is suitable for acamedic research to implement an idea and test its applicability, but the efficiency for data loading, training, and inference are not involved in this library.
 
 
-## Installation
+## :package: Installation
 
 This repositiry is tested on Python 3.10+. We recommend creating a new virtual envrionment before installing `AccelHydra` to avoid breaking existing environments:
 ```bash
@@ -51,7 +51,7 @@ pip install accel_hydra
 pip install git+https://github.com/wsntxxn/AccelHydra
 ```
 
-## Usage
+## :computer: Usage
 
 Check out the [documentation](https://wsntxxn.github.io/AccelHydra) or have a look at [examples](https://github.com/wsntxxn/AccelHydra/tree/main/examples).
 
@@ -69,7 +69,7 @@ accelerate launch \
   train.py
 ```
 
-## Note
+## :memo: Note
 
 Currently AccelHydra is only tested on GPU nodes. Welcome to test this library on more machines and create corresponding PRs.
 
@@ -79,7 +79,7 @@ If you found this repository useful, please consider citing
 ```bibtex
 @misc{
   title={AccelHydra: A Lightweight, Configurable and Modular Training Framework based on Accelerate and Hydra.},
-  author={Xuenan Xu and Yixuan Li},
+  author={Xuenan Xu and Yixuan Li and Jiahao Mei},
   howpublished={\url{https://github.com/wsntxxn/AccelHydra}},
   year={2025}
 }

@@ -1,7 +1,5 @@
 defaults:
   - basic
-  - override hydra/hydra_logging: disabled
-  - override hydra/job_logging: disabled
   - _self_
 
 seed: 42

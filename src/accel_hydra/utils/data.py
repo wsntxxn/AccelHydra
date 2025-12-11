@@ -6,24 +6,31 @@ import hydra
 def init_dataloader_from_config(config: dict):
     """
     A helper function to initialize a dataloader from a config.
+
     Args:
-        config: A dictionary or DictConfig containing the dataloader configuration, with the format:
-        '''
-        _target_: torch.utils.data.DataLoader
-        dataset:
-          _target_: ...
-          ...
-        (sampler:
-          _target_: ...
-          ...)
-        (batch_sampler:
-          _target_: ...
-          ...)
-        batch_size: int
-        num_workers: int
-        '''
+        config: A dictionary or DictConfig containing the dataloader configuration.
+    
     Returns:
         instantiated dataloader object.
+
+    Example:
+        ```python
+        config = '''
+        train_dataloader:
+        _target_: torch.utils.data.DataLoader
+        dataset:
+            _target_: data.train_dataset
+            data_root: /path/to/data
+        # sampler:
+        #   _target_: torch.utils.data.Sampler
+        #   ...
+        # batch_sampler:
+        #   _target_: torch.utils.data.BatchSampler
+        #   ...
+        '''
+        config = OmegaConf.create(config)
+        train_dataloader = init_dataloader_from_config(config["train_dataloader"])
+        ```
     """
     config = deepcopy(config)
     kwargs = {}
