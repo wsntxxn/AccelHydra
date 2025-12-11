@@ -8,14 +8,12 @@ from contextlib import contextmanager, nullcontext
 
 import numpy as np
 from tqdm import trange, tqdm
-from torchdata.stateful_dataloader import StatefulDataLoader
+# from torchdata.stateful_dataloader import StatefulDataLoader
 from torch.utils.data import DataLoader
 import torch
 import torch.nn as nn
 from accelerate.utils import set_seed, broadcast, DataLoaderConfiguration
 from accelerate import DistributedDataParallelKwargs
-import wandb
-from swanlab.integration.accelerate import SwanLabTracker
 
 from ..utils.accelerate import AcceleratorSaveTrainableParams
 from ..utils import is_package_available
@@ -183,6 +181,7 @@ class Trainer(CheckpointMixin):
                 "Supported loggers are 'wandb', 'swanlab', and 'tensorboard'."
             )
             if self.logging_config.report_to == "swanlab":
+                from swanlab.integration.accelerate import SwanLabTracker
                 tracker = SwanLabTracker(
                     run_name=self.logging_config.project,
                     experiment_name=self.logging_config.name,
@@ -626,8 +625,10 @@ class Trainer(CheckpointMixin):
         self.accelerator.print("training end ............")
         self.accelerator.end_training()
         # wandb sometimes stuck in finishing
-        if wandb.run is not None:
-            wandb.finish()
+        if is_package_available("wandb"):
+            import wandb
+            if wandb.run is not None:
+                wandb.finish()
 
     def train(self, seed: int) -> None:
         set_seed(seed)

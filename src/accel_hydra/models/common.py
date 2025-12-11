@@ -2,7 +2,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 
-from accel_hydra.utils.torch import load_pretrained_model, merge_matched_keys
+from ..utils.torch import load_pretrained_model, merge_matched_keys
 
 
 class LoadPretrainedBase(nn.Module):
