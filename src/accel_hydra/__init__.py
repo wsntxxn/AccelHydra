@@ -2,7 +2,7 @@
 #
 # Licensed under the MIT License. See LICENSE file for details.
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __license__ = "MIT"
 
 from .trainer import Trainer, MetricMonitor
