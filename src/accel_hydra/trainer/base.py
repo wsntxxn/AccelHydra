@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from contextlib import contextmanager, nullcontext
 
 import numpy as np
+import torch.distributed as dist
 from tqdm import trange, tqdm
 # from torchdata.stateful_dataloader import StatefulDataLoader
 from torch.utils.data import DataLoader
@@ -324,13 +325,18 @@ class Trainer(CheckpointMixin):
         raise NotImplementedError("Subclasses must implement this method")
 
     def get_context(self) -> contextmanager:
+        """
+        FIXME: why does it not work?
+        """
         if self.even_batches:
             return nullcontext()
         else:
-            return self.accelerator.join_uneven_inputs(
-                [self.model],
-                even_batches=True,
-            )
+            return self.accelerator.join_uneven_inputs([self.model])
+
+    def gather_min_length(self, length: int) -> int:
+        length_tensor = torch.tensor(length, device=self.accelerator.device)
+        dist.all_reduce(length_tensor, op=dist.ReduceOp.MIN)
+        return length_tensor.item()
 
     def val_loop(self) -> None:
         self.model.eval()
@@ -338,19 +344,19 @@ class Trainer(CheckpointMixin):
 
         self.on_validation_start()
 
-        pbar = tqdm(
-            total=len(self.val_dataloader),
-            desc="Validation",
-            disable=not self.accelerator.is_local_main_process
-        )
+        dataloader_len = self.gather_min_length(len(self.val_dataloader))
+        self.val_data_iterator = iter(self.val_dataloader)
+        if self.accelerator.is_main_process:
+            range_iterator = trange(
+                dataloader_len,
+                desc="Validation",
+            )
+        else:
+            range_iterator = range(dataloader_len)
 
-        context_manager = self.get_context()
-        with context_manager:
-            for batch_idx, batch in enumerate(self.val_dataloader):
-                self.validation_step(batch, batch_idx)
-                pbar.update()
-
-        pbar.close()
+        for batch_idx in range_iterator:
+            batch = next(self.val_data_iterator)
+            self.validation_step(batch, batch_idx)
 
         self.on_validation_end()
         self.model.train()
@@ -481,6 +487,8 @@ class Trainer(CheckpointMixin):
 
         epoch_steps = (self.epoch + 1) * self.epoch_length - self.step
 
+        epoch_steps = self.gather_min_length(epoch_steps)
+
         if self.accelerator.is_main_process:
             range_iterator = trange(
                 epoch_steps, desc=f"Epoch {self.epoch + 1}/{self.epochs}"
@@ -488,61 +496,59 @@ class Trainer(CheckpointMixin):
         else:
             range_iterator = range(epoch_steps)
 
-        context_manager = self.get_context()
-        with context_manager:
-            for batch_idx in range_iterator:
-                try:
-                    batch = next(self.train_data_iterator)
-                except StopIteration:
-                    self.train_data_iterator = iter(self.train_dataloader)
-                    batch = next(self.train_data_iterator)
+        for batch_idx in range_iterator:
+            try:
+                batch = next(self.train_data_iterator)
+            except StopIteration:
+                self.train_data_iterator = iter(self.train_dataloader)
+                batch = next(self.train_data_iterator)
 
-                with self.accelerator.accumulate(self.model):
-                    loss = self.training_step(batch, batch_idx)
-                    self.accelerator.log({"train/loss": loss.item()},
+            with self.accelerator.accumulate(self.model):
+                loss = self.training_step(batch, batch_idx)
+                self.accelerator.log({"train/loss": loss.item()},
+                                     step=self.step)
+
+                self.accelerator.backward(loss)
+
+                # gradient clipping and logging
+                if self.accelerator.sync_gradients:
+                    if self.max_grad_norm:
+                        grad_norm = self.accelerator.clip_grad_norm_(
+                            self.model.parameters(), self.max_grad_norm
+                        )
+                    else:
+                        grad_norm = nn.utils.clip_grad_norm_(
+                            self.model.parameters(), float('inf')
+                        )
+                    self.accelerator.log({"train/grad_norm": grad_norm},
                                          step=self.step)
 
-                    self.accelerator.backward(loss)
+                self.optimizer.step()
+                if self.lr_scheduler_interval == LRSchedulerInterval.STEP:
+                    self.lr_scheduler.step()
+                self.optimizer.zero_grad()
 
-                    # gradient clipping and logging
-                    if self.accelerator.sync_gradients:
-                        if self.max_grad_norm:
-                            grad_norm = self.accelerator.clip_grad_norm_(
-                                self.model.parameters(), self.max_grad_norm
-                            )
-                        else:
-                            grad_norm = nn.utils.clip_grad_norm_(
-                                self.model.parameters(), float('inf')
-                            )
-                        self.accelerator.log({"train/grad_norm": grad_norm},
-                                             step=self.step)
+            self.step += 1
 
-                    self.optimizer.step()
-                    if self.lr_scheduler_interval == LRSchedulerInterval.STEP:
-                        self.lr_scheduler.step()
-                    self.optimizer.zero_grad()
+            if self.save_every_n_steps:
+                should_save_checkpoint = self.step % self.save_every_n_steps == 0
+                if should_save_checkpoint:
+                    self.save_checkpoint(
+                        self.checkpoint_dir / f"step_{self.step}"
+                    )
 
-                self.step += 1
-
-                if self.save_every_n_steps:
-                    should_save_checkpoint = self.step % self.save_every_n_steps == 0
-                    if should_save_checkpoint:
-                        self.save_checkpoint(
-                            self.checkpoint_dir / f"step_{self.step}"
-                        )
-
-                # FIXME `self.epoch` may be not set properly at this step
-                if self.permanent_save_every_n_steps:
-                    should_save_checkpoint = self.step % self.permanent_save_every_n_steps == 0
-                    if should_save_checkpoint:
-                        # if self.step % self.epoch_length == 0:
-                        #     self.epoch += 1
-                        self.save_checkpoint(
-                            self.project_dir / f"ckpt_step_{self.step}",
-                            clean_old_checkpoints=False
-                        )
-                        # if self.step % self.epoch_length == 0:
-                        #     self.epoch -= 1
+            # FIXME `self.epoch` may be not set properly at this step
+            if self.permanent_save_every_n_steps:
+                should_save_checkpoint = self.step % self.permanent_save_every_n_steps == 0
+                if should_save_checkpoint:
+                    # if self.step % self.epoch_length == 0:
+                    #     self.epoch += 1
+                    self.save_checkpoint(
+                        self.project_dir / f"ckpt_step_{self.step}",
+                        clean_old_checkpoints=False
+                    )
+                    # if self.step % self.epoch_length == 0:
+                    #     self.epoch -= 1
 
         if self.val_dataloader is not None:
             self.val_loop()

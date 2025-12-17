@@ -6,6 +6,7 @@
 [![pytorch](https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white)](https://pytorch.org/get-started/locally/)
 [![accelerate](https://img.shields.io/badge/Accelerate-yellow?logo=huggingface)](https://github.com/huggingface/accelerate)
 [![hydra](https://img.shields.io/badge/Config-Hydra_1.3-89b8cd)](https://hydra.cc/)
+[![docs](https://img.shields.io/badge/docs-latest-brightgreen)](https://wsntxxn.github.io/AccelHydra)
 [![license](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/wsntxxn/AccelHydra#license)
 
 *It is still developing, with potential errors. Welcome bug report and PR!*
