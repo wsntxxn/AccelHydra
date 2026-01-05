@@ -2,7 +2,9 @@
 #
 # Licensed under the MIT License. See LICENSE file for details.
 
-__version__ = "0.0.3"
+from importlib.metadata import version
+
+__version__ = version("accel_hydra")
 __license__ = "MIT"
 
 from .trainer import Trainer, MetricMonitor
