@@ -1,13 +1,13 @@
 defaults:
   - basic
   - data@batch: dynamic_batch_size
-  - model: f5tts_accel_hydra
+  - model: f5tts_base
   - loss@loss_fn: identity
   - _self_
 
 n_mel_channels: 100
 
-exp_name: f5tts_base_libritts_text_embedding_mask
+exp_name: f5tts_base_libritts
 exp_dir: experiments/${exp_name}/
 logging_file: ${exp_dir}/train.log
 
@@ -15,8 +15,8 @@ train_dataloader:
   _target_: torch.utils.data.DataLoader
   dataset:
     _target_: data_module.dataset.CustomDataset
-    hf_data_raw_path: "/mnt/shared-storage-user/xuxuenan/workspace/f5tts/data/LibriTTS_100_360_500_char/raw.arrow"
-    duration_path: "/mnt/shared-storage-user/xuxuenan/workspace/f5tts/data/LibriTTS_100_360_500_char/duration.json"
+    hf_data_raw_path: "./data/LibriTTS_100_360_500_char/raw.arrow"
+    duration_path: "./data/LibriTTS_100_360_500_char/duration.json"
     min_duration: 0.3
     max_duration: 30.0
     target_sample_rate: 24000
@@ -29,28 +29,9 @@ train_dataloader:
   batch_sampler: ${batch.batch_sampler}
   num_workers: 12
   collate_fn:
-    _target_: data_module.collate_function.F5CollateWithoutRename
+    _target_: data_module.collate_function.F5Collate
 
-val_dataloader:
-  _target_: torch.utils.data.DataLoader
-  dataset:
-    _target_: data_module.dataset.CustomDataset
-    hf_data_raw_path: "/mnt/shared-storage-user/xuxuenan/workspace/f5tts/data/LibriTTS_100_360_500_char/raw.arrow"
-    duration_path: "/mnt/shared-storage-user/xuxuenan/workspace/f5tts/data/LibriTTS_100_360_500_char/duration.json"
-    min_duration: 0.3
-    max_duration: 30.0
-    target_sample_rate: 24000
-    n_mel_channels: ${n_mel_channels}
-    hop_length: 256
-    win_length: 1024
-    n_fft: 1024
-    mel_spec_type: ${vocoder}
-    max_samples: 2000
-  batch_size: 32 # per device batch size
-  shuffle: false
-  num_workers: 12
-  collate_fn:
-    _target_: data_module.collate_function.F5CollateWithoutRename
+val_dataloader: Null
 
 warmup_params:
   warmup_steps: 20000
@@ -68,7 +49,7 @@ lr_scheduler:
   _target_: "transformers.get_scheduler"
   name: "linear"
 
-epochs: 300
+epochs: 600
 epoch_length: 2000
 
 trainer:
@@ -80,7 +61,7 @@ trainer:
   epochs: ${epochs}
   epoch_length: ${epoch_length}
   save_last_k: 2
-  permanent_save_every_n_steps: 50000
+  permanent_save_every_n_steps: 100000
   early_stop: Null
   logging_config:
     _target_: accel_hydra.trainer.LoggingConfig

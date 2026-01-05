@@ -1,7 +1,103 @@
 from functools import lru_cache
+from abc import abstractmethod, ABC
+import json
 
 import jieba
 from pypinyin import Style, lazy_pinyin
+from g2p_en import G2p
+import torch
+from torch.nn.utils.rnn import pad_sequence
+
+
+class TokenizerBase(ABC):
+    def __init__(self, padding_value: int = -1) -> None:
+        self.padding_value = padding_value
+
+    @abstractmethod
+    def tokenize_sample(self, text: str) -> list[int]:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def vocab_size(self) -> int:
+        raise NotImplementedError
+
+    def __call__(self, text: str | list[int]) -> torch.Tensor:
+        batch_tokens = []
+
+        if isinstance(text, str):
+            text_list = [text]
+        else:
+            text_list = text
+
+        for text_ in text_list:
+            tokens = self.tokenize_sample(text_)
+            batch_tokens.append(tokens)
+
+        if isinstance(text, str):
+            return torch.as_tensor(batch_tokens[0])
+        else:
+            return self.to_batch(batch_tokens)
+
+    def to_batch(self, token_list: list[int]) -> torch.Tensor:
+        token_batch = pad_sequence(
+            [torch.as_tensor(tokens) for tokens in token_list],
+            padding_value=self.padding_value,
+            batch_first=True,
+        )
+        return token_batch
+
+
+class PhonemeTokenizer(TokenizerBase):
+    def __init__(self, phoneme_set: str, padding_value: int = -1) -> None:
+        super().__init__(padding_value)
+        if phoneme_set.endswith(".json"):
+            self.phonemes = json.load(open(phoneme_set, "r"))
+        else:
+            with open(phoneme_set, "r", encoding="utf-8") as f:
+                self.phonemes = [phn.strip() for phn in f]
+        self.phoneme2id = {phn: i for i, phn in enumerate(self.phonemes)}
+        self.g2p = G2p()
+
+    def tokenize_sample(self, text: str) -> list[int]:
+        phonemes = self.g2p(text)
+        phonemes = [item.replace(' ', '<BLK>') for item in phonemes]
+        phonemes = [item for item in phonemes if item in self.phonemes]
+        tokens = [self.phoneme2id.get(p, 0) for p in phonemes]
+        return tokens
+
+    @property
+    def vocab_size(self) -> int:
+        return len(self.phonemes)
+
+
+class CharacterTokenizer(TokenizerBase):
+    def __init__(self, character_set: str, padding_value: int = -1) -> None:
+        super().__init__(padding_value)
+        if character_set.endswith(".json"):
+            self.characters = json.load(open(character_set, "r"))
+        else:
+            with open(character_set, "r", encoding="utf-8") as f:
+                self.characters = [char.strip() for char in f]
+        self.character2id = {char: i for i, char in enumerate(self.characters)}
+
+    def tokenize_sample(self, text: str) -> list[int]:
+        tokens = [self.character2id.get(c, 0) for c in text]
+        return tokens
+
+    @property
+    def vocab_size(self) -> int:
+        return len(self.characters)
+
+
+class ByteTokenizer(TokenizerBase):
+    def tokenize_sample(self, text: str) -> list[int]:
+        tokens = [*bytes(text, "UTF-8")]
+        return tokens
+
+    @property
+    def vocab_size(self) -> int:
+        return 256
 
 
 @lru_cache(maxsize=32)

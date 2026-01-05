@@ -1,0 +1,7 @@
+# Simple test config without defaults
+seed: 42
+exp_name: test
+
+model:
+  _target_: test_model.DummyModel
+  hidden_dim: 256

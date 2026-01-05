@@ -1,0 +1,10 @@
+# Test config using resolvers
+
+# Test len resolver
+vocab_list: [1, 2, 3, 4, 5]
+vocab_size: ${len:${vocab_list}}
+
+# Test multiply resolver
+num_layers: 4
+hidden_dim: 512
+total_params: ${multiply:${num_layers},${hidden_dim}}

@@ -1,0 +1,5 @@
+# Test config using custom resolvers
+
+epochs: 100
+epoch_length: 2000
+warmup_steps: ${get_warmup_steps:${epochs},${epoch_length}}

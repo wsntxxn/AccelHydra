@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from utils.tokenize import TokenizerBase
+
 
 def precompute_freqs_cis(
     dim: int, end: int, theta: float = 10000.0, theta_rescale_factor=1.0
@@ -81,16 +83,17 @@ class ConvNeXtV2Block(nn.Module):
 class ConvNeXtTextEncoder(nn.Module):
     def __init__(
         self,
-        text_num_embeds,
-        text_dim,
-        mask_padding=True,
-        average_upsampling=False,
-        conv_layers=0,
-        conv_mult=2
+        tokenizer: TokenizerBase,
+        text_dim: int,
+        mask_padding: bool = True,
+        average_upsampling: bool = False,
+        conv_layers: int = 0,
+        conv_mult: int = 2
     ):
         super().__init__()
+        self.tokenizer = tokenizer
         self.text_embed = nn.Embedding(
-            text_num_embeds + 1, text_dim
+            tokenizer.vocab_size + 1, text_dim
         )  # use 0 as filler token
 
         self.mask_padding = mask_padding  # mask filler and batch padding tokens or not

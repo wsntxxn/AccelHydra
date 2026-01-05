@@ -11,7 +11,7 @@ wav_dir: "inference"
 vocoder:
   vocoder_name: "bigvgan"
   is_local: true
-  local_path: "/mnt/shared-storage-user/brainllm-share/checkpoints/bigvgan_v2_24khz_100band_256x"
+  local_path: "./checkpoints/bigvgan_v2_24khz_100band_256x"
 
 # target_rms: 0.1
 # target_duration: 6.5
@@ -21,24 +21,18 @@ test_dataloader:
   _target_: torch.utils.data.DataLoader
   dataset:
     _target_: data_module.dataset.CrossSentenceTTSDataset
-    cross_sentence_meta: /mnt/shared-storage-user/xuxuenan/workspace/f5tts/data/librispeech_pc_test_clean_cross_sentence.lst
-    audio_mapping: /mnt/shared-storage-user/xuxuenan/workspace/uniflow_audio/data/librispeech_pc/audio.jsonl
+    cross_sentence_meta: ./data/LibriSpeechPC/librispeech_pc_test_clean_cross_sentence.lst
+    audio_mapping: ./data/LibriSpeechPC/audio.jsonl
   batch_size: 1
   shuffle: False
   num_workers: 4
+  collate_fn:
+    _target_: accel_hydra.data_module.collate_function.PaddingCollate
+    pad_keys: ["prompt_mel_spec"]
 
-# noise_scheduler:
-#   type: diffusers.FlowMatchEulerDiscreteScheduler
 
 infer_args:
-  num_steps: 32
-  guidance_scale: 3.0
+  steps: 32
+  cfg_strength: 2.0
   sway_sampling_coef: -1
-  seed: 2025
-  disable_progress: false
-  latent_shape: [null, 100]
-
-  # steps: 32
-  # cfg_strength: 2.0
-  # sway_sampling_coef: -1
-  # no_ref_audio: false
+  no_ref_audio: false

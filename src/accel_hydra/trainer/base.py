@@ -344,7 +344,10 @@ class Trainer(CheckpointMixin):
 
         self.on_validation_start()
 
-        dataloader_len = self.gather_min_length(len(self.val_dataloader))
+        if dist.is_initialized():
+            dataloader_len = self.gather_min_length(len(self.val_dataloader))
+        else:
+            dataloader_len = len(self.val_dataloader)
         self.val_data_iterator = iter(self.val_dataloader)
         if self.accelerator.is_main_process:
             range_iterator = trange(
@@ -487,7 +490,10 @@ class Trainer(CheckpointMixin):
 
         epoch_steps = (self.epoch + 1) * self.epoch_length - self.step
 
-        epoch_steps = self.gather_min_length(epoch_steps)
+        if dist.is_initialized():
+            epoch_steps = self.gather_min_length(epoch_steps)
+        else:
+            epoch_steps = epoch_steps
 
         if self.accelerator.is_main_process:
             range_iterator = trange(
@@ -570,20 +576,19 @@ class Trainer(CheckpointMixin):
                     self.checkpoint_dir / f"epoch_{self.epoch}"
                 )
 
-        metric_dict: dict = self.get_val_metrics()
-        if self.metric_monitor is not None:
-            # save checkpoint if the monitored metric improves
-            should_save_checkpoint = self.wrap_and_broadcast_value(
-                self.metric_monitor(metric_dict)
-            )
-            if should_save_checkpoint:
-                self.accelerator.print("\n Saving best checkpoint...")
-                self.save_checkpoint(self.checkpoint_dir / "best")
+        if self.val_dataloader is not None:
+            metric_dict: dict = self.get_val_metrics()
+            if self.metric_monitor is not None:
+                # save checkpoint if the monitored metric improves
+                should_save_checkpoint = self.wrap_and_broadcast_value(
+                    self.metric_monitor(metric_dict)
+                )
+                if should_save_checkpoint:
+                    self.accelerator.print("\n Saving best checkpoint...")
+                    self.save_checkpoint(self.checkpoint_dir / "best")
 
-            if self.early_stop is not None and self.metric_monitor.worse_count >= self.early_stop:
-                self.should_stop_training = True
-        else:
-            assert self.early_stop is None, "early stop does not have metrics to monitor!"
+                if self.early_stop is not None and self.metric_monitor.worse_count >= self.early_stop:
+                    self.should_stop_training = True
 
         # on start of train epoch end func
         self.on_train_epoch_end()
@@ -626,6 +631,9 @@ class Trainer(CheckpointMixin):
                     }
                 }
             )
+
+        if self.val_dataloader is not None and self.metric_monitor is None:
+            assert self.early_stop is None, "early stop does not have metrics to monitor!"
 
     def on_train_end(self) -> None:
         self.accelerator.print("training end ............")

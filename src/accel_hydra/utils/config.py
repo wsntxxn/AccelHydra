@@ -1,6 +1,5 @@
 from pathlib import Path
-import sys
-import os
+import argparse
 from typing import Callable
 
 import hydra
@@ -30,20 +29,63 @@ def register_omegaconf_resolvers(clear_resolvers: bool = True) -> None:
     OmegaConf.register_new_resolver("multiply", multiply, replace=True)
 
 
-def generate_config_from_command_line_overrides(
+def load_config_with_overrides(
     config_file: str | Path,
+    overrides: list[str],
     register_resolver_fn: Callable = register_omegaconf_resolvers,
 ) -> omegaconf.DictConfig:
     register_resolver_fn()
 
     config_file = Path(config_file).resolve()
     config_name = config_file.name.__str__()
-    config_path = config_file.parent.__str__()
-    config_path = os.path.relpath(config_path, Path(__file__).resolve().parent)
+    config_dir = config_file.parent.resolve().__str__()
 
-    overrides = sys.argv[1:]
-    with hydra.initialize(version_base=None, config_path=config_path):
+    with hydra.initialize_config_dir(version_base=None, config_dir=config_dir):
         config = hydra.compose(config_name=config_name, overrides=overrides)
-    omegaconf.OmegaConf.resolve(config)
+
+    config = OmegaConf.to_container(config, resolve=True)
 
     return config
+
+
+def load_config_from_cli(
+    return_config: bool = True,
+    register_resolver_fn: Callable = register_omegaconf_resolvers,
+):
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config_file",
+        "-c",
+        default="configs/train.yaml",
+        type=str,
+        help="Path to the config file",
+    )
+    parser.add_argument(
+        "--overrides",
+        "-o",
+        default=[],
+        nargs="*",
+        help="Overrides to the config",
+    )
+    args, _ = parser.parse_known_args()
+
+    if return_config:
+        config = load_config_with_overrides(
+            args.config_file, args.overrides, register_resolver_fn
+        )
+        return config
+    else:
+        return args.config_file, args.overrides
+
+
+def parse_launch_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--launcher",
+        "-l",
+        default="accel_hydra.train_launcher.TrainLauncher",
+        type=str,
+        help="The entrypoint of the training script to use"
+    )
+    args, _ = parser.parse_known_args()
+    return args.launcher

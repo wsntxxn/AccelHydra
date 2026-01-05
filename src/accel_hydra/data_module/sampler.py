@@ -87,11 +87,19 @@ class BucketSampler(Sampler[int]):
 
         # Calculate total number of samples (accounting for drop_last)
         self.num_samples = 0
-        for bucket in self.buckets:
-            num_samples = len(bucket)
-            if self.drop_last:
-                num_samples = num_samples // batch_size * batch_size
-            self.num_samples += num_samples
+        if self.drop_last:
+            # Count complete batches from each bucket, plus cross-bucket batches from remaining samples
+            total_remaining = 0
+            for bucket in self.buckets:
+                # Complete batches from this bucket
+                self.num_samples += len(bucket) // batch_size * batch_size
+                # Remaining samples from this bucket
+                total_remaining += len(bucket) % batch_size
+            # Cross-bucket batches from remaining samples
+            self.num_samples += total_remaining // batch_size * batch_size
+        else:
+            # Include all samples, including incomplete batches
+            self.num_samples = sum(len(bucket) for bucket in self.buckets)
 
     def __iter__(self):
         # Initialize generator for reproducible shuffling
@@ -111,25 +119,47 @@ class BucketSampler(Sampler[int]):
         else:
             buckets = self.buckets
 
-        print(f'buckets: {buckets}')
+        # print(f'buckets: {buckets}')
 
         batches = []
+        remaining_samples = []
+
         # Generate batches from each bucket
         for bucket in buckets:
-            # If drop_last, only take complete batches
-            if self.drop_last:
-                num_batches = len(bucket) // self.batch_size
-            else:
-                # If not drop_last, include the last incomplete batch
-                num_batches = (
-                    len(bucket) + self.batch_size - 1
-                ) // self.batch_size
+            # Always take complete batches from each bucket first
+            num_complete_batches = len(bucket) // self.batch_size
 
-            for i in range(num_batches):
+            for i in range(num_complete_batches):
                 start_idx = i * self.batch_size
                 end_idx = start_idx + self.batch_size
                 batches.append(bucket[start_idx:end_idx])
-        print(f'batches: {batches}')
+
+            # Collect remaining samples from this bucket
+            remaining_start = num_complete_batches * self.batch_size
+            if remaining_start < len(bucket):
+                remaining_samples.extend(bucket[remaining_start:])
+
+        # Form batches from remaining samples across buckets
+        if remaining_samples:
+            if self.drop_last:
+                # Only form complete batches from remaining samples
+                num_remaining_batches = len(
+                    remaining_samples
+                ) // self.batch_size
+                for i in range(num_remaining_batches):
+                    start_idx = i * self.batch_size
+                    end_idx = start_idx + self.batch_size
+                    batches.append(remaining_samples[start_idx:end_idx])
+            else:
+                # Include the last incomplete batch
+                num_remaining_batches = (
+                    len(remaining_samples) + self.batch_size - 1
+                ) // self.batch_size
+                for i in range(num_remaining_batches):
+                    start_idx = i * self.batch_size
+                    end_idx = start_idx + self.batch_size
+                    batches.append(remaining_samples[start_idx:end_idx])
+        # print(f'batches: {batches}')
 
         # Shuffle batch order if enabled
         if self.shuffle:
@@ -138,7 +168,7 @@ class BucketSampler(Sampler[int]):
         else:
             batch_ids = list(range(len(batches)))
 
-        print(f'batch_ids: {batch_ids}')
+        # print(f'batch_ids: {batch_ids}')
 
         # Yield sample indices in batch order
         for batch_id in batch_ids:

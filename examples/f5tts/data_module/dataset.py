@@ -12,6 +12,7 @@ from utils.general import default
 from utils.audio import MelSpec
 
 
+@dataclass(kw_only=True)
 class AudioLoadingMixin:
     def load_audio(
         self, audio_path: str, target_sample_rate: int
@@ -26,10 +27,9 @@ class AudioLoadingMixin:
         return audio
 
 
-@dataclass
-class CustomDataset(torch.utils.data.Dataset, AudioLoadingMixin):
+@dataclass(kw_only=True)
+class CustomDataset(AudioLoadingMixin):
 
-    # TODO minimum duration grouping transform
     hf_data_raw_path: str
     duration_path: str
     min_duration: float = field(default=0.3)
@@ -95,7 +95,20 @@ class CustomDataset(torch.utils.data.Dataset, AudioLoadingMixin):
         if self.preprocessed_mel:
             mel_spec = torch.tensor(row["mel_spec"])
         else:
-            audio = self.load_audio(audio_path, self.target_sample_rate)
+            read_success = False
+            while not read_success:
+                try:
+                    audio = self.load_audio(
+                        audio_path, self.target_sample_rate
+                    )
+                    read_success = True
+                except Exception as e:
+                    print(f"Error loading audio from {audio_path}: {e}")
+                    index = (index + 1) % len(self.data)
+                    row = self.data[index]
+                    audio_path = row["audio_path"]
+                    text = row["text"]
+
             # to mel spectrogram
             mel_spec = self.mel_spectrogram(audio)
             mel_spec = mel_spec.squeeze(0)  # '1 d t -> d t'
@@ -106,7 +119,7 @@ class CustomDataset(torch.utils.data.Dataset, AudioLoadingMixin):
         }
 
 
-@dataclass
+@dataclass(kw_only=True)
 class CrossSentenceTTSDataset(torch.utils.data.Dataset, AudioLoadingMixin):
 
     cross_sentence_meta: str
@@ -167,7 +180,9 @@ class CrossSentenceTTSDataset(torch.utils.data.Dataset, AudioLoadingMixin):
             prompt_audio_path, self.target_sample_rate
         )
         prompt_mel_spec = self.mel_spectrogram(prompt_audio)
-        prompt_mel_spec = prompt_mel_spec.squeeze(0)  # '1 d t -> d t'
+        prompt_mel_spec = prompt_mel_spec.squeeze(0).transpose(
+            0, 1
+        )  # '1 d t -> d t'
 
         return {
             "audio_id": audio_id,
@@ -179,33 +194,3 @@ class CrossSentenceTTSDataset(torch.utils.data.Dataset, AudioLoadingMixin):
 
     def __len__(self):
         return len(self.data)
-
-
-@dataclass
-class MinimumDurationGroupingDataset(CustomDataset):
-
-    group_duration: float = field(default=12.0)
-
-    def __post_init__(self):
-        super().__post_init__()
-        groups = []
-        group_durations = []
-        current_group = []
-        current_sum = 0.0
-
-        for idx in range(len(self.durations)):
-            duration = self.durations[idx]
-            current_group.append(idx)
-            current_sum += duration
-            if current_sum >= self.group_duration:
-                groups.append(current_group)
-                current_group = []
-                current_sum = 0.0
-                group_durations.append(current_sum)
-
-        if current_group:
-            groups.append(current_group)
-            group_durations.append(current_sum)
-
-        self.durations = group_durations
-        self.groups = groups

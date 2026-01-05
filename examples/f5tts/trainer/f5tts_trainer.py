@@ -74,26 +74,9 @@ class F5TTSTrainer(Trainer):
             self.val_loss_dict[loss_name] += loss_dict[loss_name].item()
         self.val_batch_num += 1
 
-    def get_val_metrics(self):
-        metric_name = self.metric_monitor.metric_name
-        assert metric_name in self.val_loss_dict, \
-            f"{metric_name} not found in validation loss dict"
-        return {
-            metric_name: self.val_loss_dict[metric_name] / self.val_batch_num
-        }
-
     def on_train_epoch_end(self):
         train_loss = self.train_loss / self.train_batch_num
-        val_loss = self.val_loss_dict["loss"] / self.val_batch_num
-        log_dict = {}
-        for loss_name in self.val_loss_dict:
-            log_dict[f"val/{loss_name}"
-                    ] = self.val_loss_dict[loss_name] / self.val_batch_num
-        self.accelerator.log(
-            log_dict,
-            step=self.step,
-        )
-        logging_msg = f"epoch[{self.epoch}], train loss: {train_loss:.3f}, val loss: {val_loss:.3f}"
+        logging_msg = f"epoch[{self.epoch}], train loss: {train_loss:.3f}"
         self.accelerator.print(logging_msg)
         if self.accelerator.is_main_process:
             self.logger.info(logging_msg)

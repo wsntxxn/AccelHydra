@@ -1,0 +1,13 @@
+# Test config with variable interpolation
+exp_name: test_interpolation
+epochs: 10
+
+trainer:
+  epochs: ${epochs}
+  exp_name: ${exp_name}
+
+model:
+  _target_: test_model.DummyModel
+  feature_extractor:
+    out_dim: ${..hidden_dim}
+  hidden_dim: 1024

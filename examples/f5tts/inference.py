@@ -1,7 +1,6 @@
 from pathlib import Path
 import os
 
-import soundfile as sf
 import torch
 import torchaudio
 import hydra
@@ -11,11 +10,10 @@ from omegaconf import OmegaConf
 from safetensors.torch import load_file
 from tqdm import tqdm
 from accel_hydra.models.common import LoadPretrainedBase
+from accel_hydra.utils import load_config_from_cli
 
 from utils.config import register_omegaconf_resolvers
 from utils.vocoder import load_vocoder
-from utils.tokenize import convert_char_to_pinyin
-from utils.audio import MelSpec
 
 try:
     import torch_npu
@@ -23,21 +21,13 @@ try:
 except:
     pass
 
-register_omegaconf_resolvers()
-
 
 def main():
 
     accelerator = Accelerator(mixed_precision="no")
-    configs = []
-
-    @hydra.main(config_path="configs", config_name="inference")
-    def parse_config_from_command_line(config):
-        config = OmegaConf.to_container(config, resolve=True)
-        configs.append(config)
-
-    parse_config_from_command_line()
-    config = configs[0]
+    config = load_config_from_cli(
+        register_resolver_fn=register_omegaconf_resolvers
+    )
 
     exp_dir, ckpt_dir = None, None
     if os.path.isdir(config["exp_dir"]):
@@ -108,7 +98,6 @@ def main():
     model, test_dataloader = accelerator.prepare(model, test_dataloader)
 
     vocoder = load_vocoder(device=accelerator.device, **config["vocoder"])
-    tokenizer = exp_config["model"]["tokenizer"]
 
     if config["wav_dir_root"] is not None:
         wav_dir_root = Path(config["wav_dir_root"])
@@ -129,50 +118,24 @@ def main():
                 prompt_text = prompt_text + " "
             text = [prompt_text + gen_text]
 
-            if tokenizer == "pinyin":
-                text_list = convert_char_to_pinyin(text, polyphone=True)
-            else:
-                text_list = text
-
             ref_mel = batch["prompt_mel_spec"][0]
             # Duration, mel frame length
-            ref_mel_len = ref_mel.shape[-1]
+            ref_mel_len = ref_mel.shape[0]
             ref_text_len = len(prompt_text.encode("utf-8"))
             gen_text_len = len(gen_text.encode("utf-8"))
             gen_mel_len = int(ref_mel_len / ref_text_len * gen_text_len)
             total_mel_len = ref_mel_len + gen_mel_len
 
-            if hasattr(unwrapped_model, 'inference') and callable(
-                getattr(unwrapped_model, 'inference')
-            ):
-                mel_spec = unwrapped_model.inference(
-                    mel_spec=ref_mel.transpose(0, 1).unsqueeze(0),
-                    text=text_list,
-                    duration=torch.as_tensor([total_mel_len]).to(
-                        accelerator.device
-                    ),
-                    mel_spec_lengths=torch.as_tensor([ref_mel_len]).to(
-                        accelerator.device
-                    ),
-                    **config["infer_args"],
-                )
-            elif hasattr(unwrapped_model, 'sample') and callable(
-                getattr(unwrapped_model, 'sample')
-            ):
-                result = unwrapped_model.sample(
-                    cond=ref_mel.transpose(0, 1).unsqueeze(0),
-                    text=text_list,
-                    duration=torch.as_tensor([total_mel_len]).to(
-                        accelerator.device
-                    ),
-                    lens=torch.as_tensor([ref_mel_len]).to(accelerator.device),
-                    **config["infer_args"],
-                )
-                mel_spec = result[0]
-            else:
-                raise AttributeError(
-                    f"Model {type(unwrapped_model).__name__} has neither 'inference' nor 'sample' method"
-                )
+            result = unwrapped_model.sample(
+                cond=ref_mel.unsqueeze(0),
+                text=text,
+                duration=torch.as_tensor([total_mel_len]).to(
+                    accelerator.device
+                ),
+                lens=torch.as_tensor([ref_mel_len]).to(accelerator.device),
+                **config["infer_args"],
+            )
+            mel_spec = result[0]
 
             mel_spec = mel_spec[0]
             mel_spec = mel_spec[ref_mel_len:total_mel_len, :].unsqueeze(0)

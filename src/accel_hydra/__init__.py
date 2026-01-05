@@ -6,3 +6,4 @@ __version__ = "0.0.3"
 __license__ = "MIT"
 
 from .trainer import Trainer, MetricMonitor
+from .train_launcher import TrainLauncher
