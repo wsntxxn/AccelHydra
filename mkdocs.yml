@@ -1,6 +1,8 @@
 site_name: AccelHydra
 site_description: A lightweight, configurable and modular training framework based on Accelerate and Hydra
 site_url: https://wsntxxn.github.io/AccelHydra
+remote_name: github
+remote_branch: gh-pages
 
 theme:
   # name: material
