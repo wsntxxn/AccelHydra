@@ -27,6 +27,17 @@ This document describes the helper functions and classes provided by AccelHydra.
         - MetricMonitor
         - LoggingConfig
 
+## Training Launcher
+
+::: accel_hydra.train_launcher
+    options:
+      show_source: false
+      heading_level: 3
+      show_root_heading: true
+      show_root_toc_entry: false
+      members:
+        - TrainLauncher
+
 ## Utilities
 
 ### Data Utilities

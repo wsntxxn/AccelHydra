@@ -70,8 +70,8 @@ pip install git+https://github.com/wsntxxn/AccelHydra
 1. **Create your model**
 2. **Create your trainer**: Inherit from `accel_hydra.Trainer` and implement `training_step` (and optionally `validation_step`)
 3. **Write your config**: Create a Hydra-style YAML configuration file
-4. **Write training script**: Write the training script, possibly with only small modifications from the example [train.py](https://github.com/wsntxxn/AccelHydra/tree/main/examples/mnist/train.py)
-5. **Launch training**: Use `accelerate launch` to start distributed training
+4. **Launch training**: Use the built-in `accel_hydra.train_entry` with `accelerate launch` to start distributed training
+   - Optionally create a custom `TrainLauncher` if you need to customize the training setup
 
 For a detailed walkthrough, see the [Getting Started Guide](getting_started.md).
 

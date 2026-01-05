@@ -59,15 +59,17 @@ Check out the [documentation](https://wsntxxn.github.io/AccelHydra) or have a lo
 Basically, to use AccelHydra for training, you need to implement your own datasets, models, loss functions, and trainer:
 * For basic functions and classes provided by AccelHydra, you don't need to implement again.
 * The trainer should inherit `accel_hydra.Trainer` and implements necessary function `training_step` (and `validation_step` if validation is used).
-* Write `train.py`: a template can be found [here](https://github.com/wsntxxn/AccelHydra/tree/main/examples/mnist/train.py).
 * Write Hydra-style YAML configs with the top-level `train.yaml`.
-* Launch training (for example, 8 GPUs on 2 nodes, fp16):
+* (Optional) Write a custom `TrainLauncher` if you need to customize the training setup.
+* (Optional) Write a custom training entry script `train.py`.
+* Launch training using the built-in entry point (for example, 8 GPUs on 2 nodes, fp16):
 ```bash
 accelerate launch \
   --num_processes 8 \
   --num_machines 2 \
   --mixed_precision fp16 \
-  train.py
+  -m accel_hydra.train_entry \
+  -c configs/train.yaml
 ```
 
 ## :memo: Note

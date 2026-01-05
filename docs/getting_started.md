@@ -8,7 +8,7 @@ The example project has the following structure:
 
 ```
 my_project/
-├── train.py              # Main training script
+├── train_launcher.py     # Optional: Custom TrainLauncher (if needed)
 ├── model.py              # Model definition
 ├── trainer.py            # Custom Trainer class
 ├── data.py               # Dataset definitions
@@ -17,7 +17,8 @@ my_project/
     └── basic.yaml        # Base configuration
 ```
 
-Only `train.py` and `configs/train.yaml` are necessary to launch training. For other components like models 
+Only `configs/train.yaml` is necessary to launch training. You can use the built-in `TrainLauncher` directly, 
+or create a custom one if you need to customize the training setup. For other components like models 
 and datasets, the definition location is not important. The only requirement is that their configuration in
 `configs/train.yaml` can be instantiated by `hydra.utils.instantiate()`.
 
@@ -165,8 +166,6 @@ seed: 42
 exp_name: mnist
 exp_dir: experiments/${exp_name}
 epochs: 10
-epoch_length: Null
-gradient_accumulation_steps: 4
 
 train_dataloader:
   _target_: torch.utils.data.DataLoader
@@ -208,9 +207,9 @@ trainer:
     project: runs
     save_dir: ${exp_dir}
     name: ${exp_name}
-  gradient_accumulation_steps: ${gradient_accumulation_steps}
+  gradient_accumulation_steps: 4
   epochs: ${epochs}
-  epoch_length: ${epoch_length}
+  epoch_length: Null
   save_every_n_steps: 500
   save_every_n_epochs: 1
   save_last_k: 2
@@ -224,180 +223,82 @@ The configuration uses Hydra's `_target_` pattern to specify class instantiation
 However, this also makes it difficult to figure out returned classes in the code, so we recommend using typing annotations to improve the 
 readability of the code.
 
-## Step 5: Write the Training Script
+## Step 5: Launch Training (Optional: Customize with TrainLauncher)
 
-Create `train.py` as the main entry point:
+AccelHydra provides a common training launcher that handles the standard training launch workflow (reading configuration, instantiating datasets and models, start training). You can directly use it for basic projects.
 
-```python
-from pathlib import Path
-import multiprocessing as mp
+### Option 1: Use the Default TrainLauncher (Recommended for Simple Cases)
 
-mp.set_start_method("spawn", force=True)
-
-import hydra
-from omegaconf import OmegaConf
-from accelerate.state import PartialState
-
-from accel_hydra import Trainer
-from accel_hydra.models import CountParamsBase
-from accel_hydra.utils import (
-    register_omegaconf_resolvers,
-    setup_resume_cfg,
-    init_dataloader_from_config,
-)
-from accel_hydra.utils.lr_scheduler import (
-    get_warmup_steps,
-    get_dataloader_one_pass_outside_steps,
-    get_total_training_steps,
-    get_steps_inside_accelerator_from_outside_steps,
-    get_dataloader_one_pass_steps_inside_accelerator,
-    lr_scheduler_param_adapter,
-)
-
-register_omegaconf_resolvers()
-
-def main():
-    configs = []
-
-    @hydra.main(version_base=None, config_path="configs", config_name="train")
-    def parse_config_from_command_line(config):
-        config = OmegaConf.to_container(config, resolve=True)
-        configs.append(config)
-
-    parse_config_from_command_line()
-    config = configs[0]
-
-    # Helper state for accessing information about the current training environment
-    state = PartialState()
-
-    # Optional: dump config to file
-    if config.get("dump_config", None) is not None:
-        if state.is_main_process:
-            with open(config["dump_config"], "w") as f:
-                OmegaConf.save(config, f)
-                print(f'config.yaml saved to {f.name}')
-        return
-
-    # Setup resume configuration if needed
-    config = setup_resume_cfg(config, do_print=state.is_main_process)
-
-    # Instantiate model
-    model: CountParamsBase = hydra.utils.instantiate(
-        config["model"], _convert_="all"
-    )
-    
-    # Initialize dataloaders
-    train_dataloader = init_dataloader_from_config(config["train_dataloader"])
-    if "val_dataloader" in config and config["val_dataloader"] is not None:
-        val_dataloader = init_dataloader_from_config(config["val_dataloader"])
-    else:
-        val_dataloader = None
-    
-    # Instantiate optimizer
-    optimizer = hydra.utils.instantiate(
-        config["optimizer"], params=model.parameters(), _convert_="all"
-    )
-
-    # Calculate training steps (important for distributed training + gradient accumulation)
-    dataloader_one_pass_outside_steps = get_dataloader_one_pass_outside_steps(
-        train_dataloader, state.num_processes
-    )
-    total_training_steps = get_total_training_steps(
-        train_dataloader, config["epochs"], state.num_processes,
-        config["epoch_length"]
-    )
-    dataloader_one_pass_steps_inside_accelerator = (
-        get_dataloader_one_pass_steps_inside_accelerator(
-            dataloader_one_pass_outside_steps,
-            config["gradient_accumulation_steps"], state.num_processes
-        )
-    )
-    num_training_updates = get_steps_inside_accelerator_from_outside_steps(
-        total_training_steps, dataloader_one_pass_outside_steps,
-        dataloader_one_pass_steps_inside_accelerator,
-        config["gradient_accumulation_steps"], state.num_processes
-    )
-
-    # Setup warmup if configured
-    if "warmup_params" in config:
-        num_warmup_steps = get_warmup_steps(
-            **config["warmup_params"],
-            dataloader_one_pass_outside_steps=dataloader_one_pass_outside_steps
-        )
-        num_warmup_updates = get_steps_inside_accelerator_from_outside_steps(
-            num_warmup_steps, dataloader_one_pass_outside_steps,
-            dataloader_one_pass_steps_inside_accelerator,
-            config["gradient_accumulation_steps"], state.num_processes
-        )
-    else:
-        num_warmup_updates = None
-
-    # Adapt LR scheduler parameters
-    lr_scheduler_config = lr_scheduler_param_adapter(
-        config_dict=config["lr_scheduler"],
-        num_training_steps=num_training_updates,
-        num_warmup_steps=num_warmup_updates,
-    )
-
-    # Instantiate LR scheduler
-    lr_scheduler = hydra.utils.instantiate(
-        lr_scheduler_config, optimizer=optimizer, _convert_="all"
-    )
-    
-    # Instantiate loss function
-    loss_fn = hydra.utils.instantiate(config["loss_fn"], _convert_="all")
-    
-    # Instantiate trainer
-    trainer: Trainer = hydra.utils.instantiate(
-        config["trainer"],
-        train_dataloader=train_dataloader,
-        val_dataloader=val_dataloader,
-        model=model,
-        optimizer=optimizer,
-        lr_scheduler=lr_scheduler,
-        loss_fn=loss_fn,
-        _convert_="all"
-    )
-    trainer.config_dict = config  # Assign config for potential use in hooks
-    
-    # Start training
-    trainer.train(seed=config["seed"])
-
-if __name__ == "__main__":
-    main()
-```
-
-This script can be used as a template for your own training script. It implements a common training launch workflow
-so it may be usable in many projects.
-
-## Step 6: Launch Training
+If your project follows the standard training workflow, you can directly use the built-in `TrainLauncher`:
 
 ```bash
 accelerate launch \
   --num_processes 2 \
   --num_machines 1 \
   --mixed_precision fp16 \
-  train.py
+  -m accel_hydra.train_entry \
+  -c configs/train.yaml
 ```
 
-### Distributed Training
+### Option 2: Create a Custom TrainLauncher (For Custom Requirements)
 
-Distributed training is easy using accelerate launch parameters. For example, to train on 2 nodes with 8 GPUs each and 
-mixed precison of fp16:
+If you need to customize the training setup (e.g., custom dataloader initialization, custom resolver registration), you can create your own launcher by inheriting from `TrainLauncher`:
+
+Create `train_launcher.py`:
+
+```python
+from typing import Callable
+from accel_hydra import TrainLauncher
+
+def register_my_resolvers():
+    # Your custom OmegaConf resolver register function
+    ...
+
+class MyCustomLauncher(TrainLauncher):
+    @staticmethod
+    def get_register_resolver_fn() -> Callable:
+        """Override to register custom OmegaConf resolvers."""
+        return register_my_resolvers
+    
+    def get_dataloaders(self):
+        """Override if you need custom dataloader initialization logic."""
+        # You can customize dataloader creation here
+        ...
+    
+```
+
+Then launch training with your custom launcher:
+
 ```bash
 accelerate launch \
-  --num_processes 16 \
-  --num_machines 2 \
+  --num_processes 2 \
+  --num_machines 1 \
   --mixed_precision fp16 \
-  train.py
+  -m accel_hydra.train_entry \
+  --launcher train_launcher.MyCustomLauncher \
+  -c configs/train.yaml
 ```
+
+The `TrainLauncher` base class handles:
+- Configuration loading from command line
+- Model, optimizer, LR scheduler, and loss function instantiation
+- Trainer setup and training launch
+- Resume from checkpoint support
+
+By inheriting from `TrainLauncher`, you can override specific methods to customize the parts you need.
 
 ### Command Line Overrides
 
 You can override any configuration value from the command line, following Hydra syntax:
 
 ```bash
-python train.py epochs=20 optimizer.lr=0.0005 trainer.save_every_n_steps=1000
+accelerate launch \
+  --num_processes 2 \
+  --num_machines 1 \
+  --mixed_precision fp16 \
+  -m accel_hydra.train_entry \
+  -c configs/train.yaml \
+  -o data_root=/path/to/custom/data/root epochs=20 optimizer.lr=0.0005
 ```
 
 For more details on Hydra syntax and overrides, see the [Configuration Guide](config_guide.md).
