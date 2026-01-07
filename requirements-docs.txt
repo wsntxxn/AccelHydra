@@ -1,0 +1,11 @@
+# Documentation build dependencies
+# Install with: pip install -r requirements-docs.txt
+
+# Core documentation tools
+sphinx>=7.0.0
+sphinx-rtd-theme>=2.0.0
+myst-parser>=2.0.0
+linkify-it-fy>=2.0.3
+
+# Include runtime dependencies (needed for autodoc to import modules)
+-r requirements.txt
