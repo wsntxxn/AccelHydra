@@ -5,14 +5,15 @@ from typing import Callable, Literal
 import torch
 import torch.nn as nn
 import torchaudio
-from alias_free_torch import Activation1d
-from models.autoencoder.autoencoder_base import AutoEncoderBase
-from torch.nn.utils import weight_norm
-from uniflow_audio.models.common import LoadPretrainedBase
-from uniflow_audio.utils.torch_utilities import (
+from accel_hydra.models.common import LoadPretrainedBase
+from accel_hydra.utils.torch import (
     create_mask_from_length,
     remove_key_prefix_factory,
 )
+from alias_free_torch import Activation1d
+from torch.nn.utils import weight_norm
+
+from models.autoencoder.autoencoder_base import AutoEncoderBase
 
 
 # jit script make it 1.4x faster and save GPU memory
@@ -531,6 +532,7 @@ class StableVAEProjectorWrapper(nn.Module):
 
 if __name__ == '__main__':
     import hydra
+
     from utils.config import generate_config_from_command_line_overrides
     model_config = generate_config_from_command_line_overrides(
         "configs/model/autoencoder/stable_vae.yaml"

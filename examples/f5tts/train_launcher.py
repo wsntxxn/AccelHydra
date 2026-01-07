@@ -2,9 +2,9 @@ from copy import deepcopy
 from typing import Callable
 
 import hydra
-from utils.config import register_omegaconf_resolvers
-
 from accel_hydra import TrainLauncher
+
+from utils.config import register_omegaconf_resolvers
 
 
 def init_dataloader_from_config(config: dict):

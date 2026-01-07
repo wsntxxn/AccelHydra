@@ -15,9 +15,14 @@ from typing import Callable
 
 import torch
 import torch.nn.functional as F
+from accel_hydra.models.common import CountParamsBase, LoadPretrainedBase
+
+# from tqdm import tqdm
+from accel_hydra.utils.torch import create_mask_from_length as lens_to_mask
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
 from torchdiffeq import odeint
+
 from utils.audio import MelSpec
 from utils.flow_matching import get_epss_timesteps
 from utils.general import default, exists
@@ -27,11 +32,6 @@ from utils.torch import (
     list_str_to_tensor,
     mask_from_frac_lengths,
 )
-
-from accel_hydra.models.common import CountParamsBase, LoadPretrainedBase
-
-# from tqdm import tqdm
-from accel_hydra.utils.torch import create_mask_from_length as lens_to_mask
 
 
 class CFM(CountParamsBase, LoadPretrainedBase):

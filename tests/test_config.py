@@ -3,13 +3,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from omegaconf import OmegaConf
-
 from accel_hydra.utils.config import (
     load_config_from_cli,
     load_config_with_overrides,
     register_omegaconf_resolvers,
 )
+from omegaconf import OmegaConf
 
 
 class TestLoadConfigFromCLI(unittest.TestCase):

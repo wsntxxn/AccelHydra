@@ -1,8 +1,7 @@
-from omegaconf import OmegaConf
-
 from accel_hydra.utils.config import (
     register_omegaconf_resolvers as register_base_resolvers,
 )
+from omegaconf import OmegaConf
 
 
 def get_pitch_downsample_ratio(

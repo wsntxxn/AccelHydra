@@ -15,11 +15,10 @@ from typing import Optional
 
 import torch
 import torch.nn.functional as F
+from accel_hydra.utils.general import is_package_available
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
 from x_transformers.x_transformers import RotaryEmbedding, apply_rotary_pos_emb
-
-from accel_hydra.utils.general import is_package_available
 
 
 def precompute_freqs_cis(

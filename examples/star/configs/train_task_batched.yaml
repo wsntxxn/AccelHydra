@@ -68,7 +68,7 @@ epochs: 600
 epoch_length: 2000
 
 trainer:
-  _target_: uniflow_audio.MultiTaskAudioGenerationTrainer
+  _target_: trainer.MultiTaskAudioGenerationTrainer
   project_dir: ${exp_dir}
   logging_file: ${logging_file}
   gradient_accumulation_steps: ${gradient_accumulation_steps}
@@ -79,13 +79,13 @@ trainer:
   early_stop: Null
   logger: tensorboard
   logging_config:
-    _target_: uniflow_audio.LoggingConfig
+    _target_: accel_hydra.trainer.LoggingConfig
     # project: x_to_audio_generation
     project: runs
     save_dir: ${exp_dir}
     name: ${exp_name}
     resume_id: Null
   metric_monitor:
-    _target_: uniflow_audio.MetricMonitor
+    _target_: accel_hydra.trainer.MetricMonitor
     metric_name: loss
     mode: min

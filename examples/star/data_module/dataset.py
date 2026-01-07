@@ -8,11 +8,10 @@ from typing import Any, Sequence
 import numpy as np
 import torch
 import torchaudio
+from accel_hydra.utils.general import read_jsonl_to_mapping
 from constants import NON_TIME_ALIGNED_TASKS, TIME_ALIGNED_TASKS
 from h5py import File
 from torch.utils.data import Dataset
-
-from accel_hydra.utils.general import read_jsonl_to_mapping
 
 
 def read_from_h5(

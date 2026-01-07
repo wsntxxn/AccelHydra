@@ -6,8 +6,8 @@ defaults:
 cfg_drop_ratio: 0.2
 
 backbone:
-  #context_dim: ${..content_dim}
-  #ta_context_dim: ${..content_dim}
+  # context_dim: ${..content_dim}
+  # ta_context_dim: ${..content_dim}
   embed_dim: 1024
   context_dim: 768
   depth: 24
@@ -17,5 +17,5 @@ _target_: models.flow_matching.SingleTaskCrossAttentionAudioFlowMatching
 content_encoder:
   _target_: models.content_encoder.content_encoder.ContentEncoder
   embed_dim: 768
-  text_encoder: None
-  speech_encoder: None
+  text_encoder: Null
+  speech_encoder: Null

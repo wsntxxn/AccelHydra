@@ -1,9 +1,9 @@
-from omegaconf import OmegaConf
-from utils.tokenize import get_vocab_size
-
 from accel_hydra.utils.config import (
     register_omegaconf_resolvers as register_base_resolvers,
 )
+from omegaconf import OmegaConf
+
+from utils.tokenize import get_vocab_size
 
 
 def add(*x):

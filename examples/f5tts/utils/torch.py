@@ -1,5 +1,7 @@
 # ruff: noqa: F722 F821
 
+from __future__ import annotations
+
 import torch
 from torch.nn.utils.rnn import pad_sequence
 

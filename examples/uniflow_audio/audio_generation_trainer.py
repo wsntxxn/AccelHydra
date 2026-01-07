@@ -5,12 +5,11 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from accel_hydra.trainer import Trainer
+from accel_hydra.utils.logging import LoggingLogger
 from omegaconf import OmegaConf
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils._pytree import tree_map
-
-from accel_hydra.trainer import Trainer
-from accel_hydra.utils.logging import LoggingLogger
 
 
 @dataclass(kw_only=True)
