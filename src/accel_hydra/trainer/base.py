@@ -265,18 +265,18 @@ class Trainer(CheckpointMixin):
                 The loss will be automatically logged as "train/loss" by the Trainer.
 
         Example:
-            ```python
-            >>> def training_step(self, batch, batch_idx):
-            ...     features, labels = batch
-            ...     preds = self.model(features)
-            ...     loss = self.loss_fn(preds, labels)
-            ...
-            ...     # Optional: Log additional metrics
-            ...     lr = self.optimizer.param_groups[0]["lr"]
-            ...     self.accelerator.log({"train/lr": lr}, step=self.step)
-            ...
-            ...     return loss
-            ```
+            .. code-block:: python
+
+                def training_step(self, batch, batch_idx):
+                    features, labels = batch
+                    preds = self.model(features)
+                    loss = self.loss_fn(preds, labels)
+
+                    # Optional: Log additional metrics
+                    lr = self.optimizer.param_groups[0]["lr"]
+                    self.accelerator.log({"train/lr": lr}, step=self.step)
+
+                    return loss
 
         Note:
             - You should NOT call `loss.backward()` manually - the Trainer handles this automatically.
@@ -303,21 +303,21 @@ class Trainer(CheckpointMixin):
                 variables for later use in `get_val_metrics()`.
 
         Example:
-            ```python
-            >>> def validation_step(self, batch, batch_idx):
-            ...     features, labels = batch
-            ...     preds = self.model(features)
-            ...     predictions = preds.argmax(dim=-1)
-            ...
-            ...     # Gather predictions from all processes (important for distributed training)
-            ...     output = {"predictions": predictions, "labels": labels}
-            ...     output = self.accelerator.gather_for_metrics(output)
-            ...
-            ...     # Accumulate metrics
-            ...     accurate_preds = (output["predictions"] == output["labels"])
-            ...     self.validation_stats["accurate"] += accurate_preds.long().sum()
-            ...     self.validation_stats["num_elems"] += accurate_preds.shape[0]
-            ```
+            .. code-block:: python
+
+                def validation_step(self, batch, batch_idx):
+                    features, labels = batch
+                    preds = self.model(features)
+                    predictions = preds.argmax(dim=-1)
+
+                    # Gather predictions from all processes (important for distributed training)
+                    output = {"predictions": predictions, "labels": labels}
+                    output = self.accelerator.gather_for_metrics(output)
+
+                    # Accumulate metrics
+                    accurate_preds = (output["predictions"] == output["labels"])
+                    self.validation_stats["accurate"] += accurate_preds.long().sum()
+                    self.validation_stats["num_elems"] += accurate_preds.shape[0]
 
         Note:
             - Use `self.accelerator.gather_for_metrics()` to collect predictions from all processes
@@ -396,25 +396,25 @@ class Trainer(CheckpointMixin):
                 empty list. Subclasses can override this property to return custom objects.
 
         Example:
-            ```python
-            import torch
-            from accel_hydra.trainer import CheckpointMixin
+            .. code-block:: python
 
-            class VersionTracker(CheckpointMixin):
-                def __init__(self):
-                    self.version = torch.__version__
+                import torch
+                from accel_hydra.trainer import CheckpointMixin
 
-                def state_dict(self) -> dict:
-                    return {"version": self.version}
+                class VersionTracker(CheckpointMixin):
+                    def __init__(self):
+                        self.version = torch.__version__
 
-                def load_state_dict(self, state_dict: dict) -> None:
-                    self.version = state_dict["version"]
+                    def state_dict(self) -> dict:
+                        return {"version": self.version}
 
-            class MyTrainer(Trainer):
-                @property
-                def checkpoint_objects(self) -> list[CheckpointMixin]:
-                    return [VersionTracker()]
-            ```
+                    def load_state_dict(self, state_dict: dict) -> None:
+                        self.version = state_dict["version"]
+
+                class MyTrainer(Trainer):
+                    @property
+                    def checkpoint_objects(self) -> list[CheckpointMixin]:
+                        return [VersionTracker()]
         """
         return []
 

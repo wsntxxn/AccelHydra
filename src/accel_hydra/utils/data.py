@@ -14,23 +14,23 @@ def init_dataloader_from_config(config: dict):
         instantiated dataloader object.
 
     Example:
-        ```python
-        config = '''
-        train_dataloader:
-        _target_: torch.utils.data.DataLoader
-        dataset:
-            _target_: data.train_dataset
-            data_root: /path/to/data
-        # sampler:
-        #   _target_: torch.utils.data.Sampler
-        #   ...
-        # batch_sampler:
-        #   _target_: torch.utils.data.BatchSampler
-        #   ...
-        '''
-        config = OmegaConf.create(config)
-        train_dataloader = init_dataloader_from_config(config["train_dataloader"])
-        ```
+        .. code-block:: python
+
+            config = '''
+            train_dataloader:
+            _target_: torch.utils.data.DataLoader
+            dataset:
+                _target_: data.train_dataset
+                data_root: /path/to/data
+            # sampler:
+            #   _target_: torch.utils.data.Sampler
+            #   ...
+            # batch_sampler:
+            #   _target_: torch.utils.data.BatchSampler
+            #   ...
+            '''
+            config = OmegaConf.create(config)
+            train_dataloader = init_dataloader_from_config(config["train_dataloader"])
     """
     config = deepcopy(config)
     kwargs = {}

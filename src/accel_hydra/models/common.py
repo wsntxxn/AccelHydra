@@ -7,6 +7,7 @@ from ..utils.torch import load_pretrained_model, merge_matched_keys
 
 
 class LoadPretrainedBase(nn.Module):
+    """Base class for loading pretrained checkpoints with custom state dict processing function."""
     def process_state_dict(
         self, model_dict: dict[str, torch.Tensor],
         state_dict: dict[str, torch.Tensor]
