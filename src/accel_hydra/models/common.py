@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import torch
 import torch.nn as nn
 
@@ -11,7 +12,7 @@ class LoadPretrainedBase(nn.Module):
         state_dict: dict[str, torch.Tensor]
     ):
         """
-        Custom processing functions of each model that transforms `state_dict` loaded from 
+        Custom processing functions of each model that transforms `state_dict` loaded from
         checkpoints to the state that can be used in `load_state_dict`.
         Use `merge_mathced_keys` to update parameters with matched names and shapes by default.
 
@@ -23,7 +24,7 @@ class LoadPretrainedBase(nn.Module):
 
         Returns:
             dict[str, torch.Tensor]:
-                The updated state dict, where parameters with matched keys and shape are 
+                The updated state dict, where parameters with matched keys and shape are
                 updated with values in `state_dict`.
         """
         state_dict = merge_matched_keys(model_dict, state_dict)

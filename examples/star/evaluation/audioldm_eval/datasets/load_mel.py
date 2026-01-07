@@ -1,8 +1,9 @@
-import torch
 import os
+
 import numpy as np
+import torch
 import torchaudio
-from tqdm import tqdm
+
 # import librosa
 
 
@@ -181,24 +182,9 @@ class WaveDataset(torch.utils.data.Dataset):
             audio = torchaudio.functional.resample(
                 audio,
                 orig_freq=file_sr,
-                new_freq=self.sr,  # rolloff=0.95, lowpass_filter_width=16 
+                new_freq=self.sr,  # rolloff=0.95, lowpass_filter_width=16
             )
             # audio = torch.FloatTensor(librosa.resample(audio.numpy(), file_sr, self.sr))
 
         audio = pad_short_audio(audio, min_samples=32000)
         return audio
-
-
-def load_npy_data(loader):
-    new_train = []
-    for mel, waveform, filename in tqdm(loader):
-        batch = batch.float().numpy()
-        new_train.append(batch.reshape(-1, ))
-    new_train = np.array(new_train)
-    return new_train
-
-
-if __name__ == "__main__":
-    path = "/scratch/combined/result/ground/00294 harvest festival rumour 1_mel.npy"
-    temp = np.load(path)
-    print("temp", temp.shape)

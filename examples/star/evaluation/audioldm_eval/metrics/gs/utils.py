@@ -10,9 +10,9 @@ except ImportError as e:
     )
     six.raise_from(error, e)
 
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.distance import cdist  # , pdist, squareform
-import matplotlib.pyplot as plt
 
 
 def relative(I_1, alpha_max, i_max=100):

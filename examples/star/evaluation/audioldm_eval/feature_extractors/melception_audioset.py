@@ -1,7 +1,8 @@
+from collections import OrderedDict
+
 import torch
 import torch.nn.functional as F
 from torchvision.models.inception import BasicConv2d, Inception3
-from collections import OrderedDict
 
 
 def load_module2model(state_dict):

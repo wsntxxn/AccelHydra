@@ -1,5 +1,5 @@
-import torch
 import numpy as np
+import torch
 
 
 def calculate_isc(featuresdict, feat_layer_name, rng_seed, samples_shuffle, splits):

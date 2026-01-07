@@ -1,6 +1,5 @@
-from dataclasses import dataclass
-from pathlib import Path
 import datetime
+from dataclasses import dataclass
 
 from accel_hydra import Trainer
 

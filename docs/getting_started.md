@@ -17,8 +17,8 @@ my_project/
     └── basic.yaml        # Base configuration
 ```
 
-Only `configs/train.yaml` is necessary to launch training. You can use the built-in `TrainLauncher` directly, 
-or create a custom one if you need to customize the training setup. For other components like models 
+Only `configs/train.yaml` is necessary to launch training. You can use the built-in `TrainLauncher` directly,
+or create a custom one if you need to customize the training setup. For other components like models
 and datasets, the definition location is not important. The only requirement is that their configuration in
 `configs/train.yaml` can be instantiated by `hydra.utils.instantiate()`.
 
@@ -95,11 +95,11 @@ class MnistTrainer(Trainer):
         features, labels = batch
         preds = self.model(features)
         loss = self.loss_fn(preds, labels)
-        
+
         # Log learning rate
         lr = self.optimizer.param_groups[0]["lr"]
         self.accelerator.log({"train/lr": lr}, step=self.step)
-        
+
         return loss
 
     def on_validation_start(self):
@@ -110,11 +110,11 @@ class MnistTrainer(Trainer):
         features, labels = batch
         preds = self.model(features)
         predictions = preds.argmax(dim=-1)
-        
+
         # Gather predictions from all processes (important for distributed training)
         output = {"predictions": predictions, "labels": labels}
         output = self.accelerator.gather_for_metrics(output)
-        
+
         # Accumulate metrics
         accurate_preds = (output["predictions"] == output["labels"])
         self.validation_stats["accurate"] += accurate_preds.long().sum()
@@ -122,7 +122,7 @@ class MnistTrainer(Trainer):
 
     def get_val_metrics(self):
         return {
-            "accuracy": self.validation_stats["accurate"].item() / 
+            "accuracy": self.validation_stats["accurate"].item() /
                        self.validation_stats["num_elems"]
         }
 
@@ -220,7 +220,7 @@ trainer:
 ```
 
 The configuration uses Hydra's `_target_` pattern to specify class instantiation. This allows flexible configuration without hardcoding imports.
-However, this also makes it difficult to figure out returned classes in the code, so we recommend using typing annotations to improve the 
+However, this also makes it difficult to figure out returned classes in the code, so we recommend using typing annotations to improve the
 readability of the code.
 
 ## Step 5: Launch Training (Optional: Customize with TrainLauncher)
@@ -259,12 +259,12 @@ class MyCustomLauncher(TrainLauncher):
     def get_register_resolver_fn() -> Callable:
         """Override to register custom OmegaConf resolvers."""
         return register_my_resolvers
-    
+
     def get_dataloaders(self):
         """Override if you need custom dataloader initialization logic."""
         # You can customize dataloader creation here
         ...
-    
+
 ```
 
 Then launch training with your custom launcher:

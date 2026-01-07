@@ -1,8 +1,8 @@
 import math
-import numpy as np
-from torch.utils.data import Sampler, BatchSampler
 
+import numpy as np
 from data_module.dataset import TaskGroupedAudioGenConcatDataset
+from torch.utils.data import BatchSampler, Sampler
 
 
 class TaskIteratingSampler(Sampler):
@@ -163,7 +163,7 @@ class TaskGroupedIteratingBatchSampler(BatchSampler):
 class TaskGroupedSequentialBatchSampler(BatchSampler):
     """
     Batch sampler that yields batches whose samples all come from the
-    same task. 
+    same task.
     """
     def __init__(
         self,

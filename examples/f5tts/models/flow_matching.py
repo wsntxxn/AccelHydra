@@ -18,18 +18,20 @@ import torch.nn.functional as F
 from torch import nn
 from torch.nn.utils.rnn import pad_sequence
 from torchdiffeq import odeint
-# from tqdm import tqdm
-from accel_hydra.utils.torch import create_mask_from_length as lens_to_mask
+from utils.audio import MelSpec
+from utils.flow_matching import get_epss_timesteps
+from utils.general import default, exists
+from utils.tokenize import get_tokenizer
+from utils.torch import (
+    list_str_to_idx,
+    list_str_to_tensor,
+    mask_from_frac_lengths,
+)
+
 from accel_hydra.models.common import CountParamsBase, LoadPretrainedBase
 
-from utils.audio import MelSpec
-from utils.general import (
-    default,
-    exists,
-)
-from utils.torch import list_str_to_idx, list_str_to_tensor, mask_from_frac_lengths
-from utils.flow_matching import get_epss_timesteps
-from utils.tokenize import get_tokenizer
+# from tqdm import tqdm
+from accel_hydra.utils.torch import create_mask_from_length as lens_to_mask
 
 
 class CFM(CountParamsBase, LoadPretrainedBase):
@@ -260,10 +262,10 @@ class CFM(CountParamsBase, LoadPretrainedBase):
 
     def forward(
         self,
-        inp: "float['b n d'] | float['b nw']",  # mel or raw wave
-        text: "int['b nt'] | list[str]",
+        inp: float["b n d"] | float["b nw"],  # mel or raw wave
+        text: int["b nt"] | list[str],
         *,
-        lens: "int['b'] | None" = None,
+        lens: int["b"] | None = None,
         noise_scheduler: str | None = None,
         **kwargs,
     ):
@@ -273,8 +275,7 @@ class CFM(CountParamsBase, LoadPretrainedBase):
             inp = inp.permute(0, 2, 1)
             assert inp.shape[-1] == self.num_channels
 
-        batch, seq_len, dtype, device, _σ1 = *inp.shape[:2
-                                                       ], inp.dtype, self.device, self.sigma
+        batch, seq_len, dtype, device = *inp.shape[:2], inp.dtype, self.device
 
         # handle text as string
         if isinstance(text, list):

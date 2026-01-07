@@ -1,6 +1,7 @@
+from typing import Optional, Tuple
+
 import numpy as np
 import torch
-from typing import Optional, Tuple
 
 
 def compute_mask_indices(

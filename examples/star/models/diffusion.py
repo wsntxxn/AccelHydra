@@ -1,25 +1,30 @@
-from typing import Sequence
 import random
-from typing import Any
 from pathlib import Path
+from typing import Any, Sequence
 
-from tqdm import tqdm
+import diffusers.schedulers as noise_schedulers
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import diffusers.schedulers as noise_schedulers
 from diffusers.schedulers.scheduling_utils import SchedulerMixin
 from diffusers.utils.torch_utils import randn_tensor
-
 from models.autoencoder.autoencoder_base import AutoEncoderBase
-from models.content_encoder.content_encoder import ContentEncoder
-from models.content_adapter import ContentAdapterBase
-from models.common import LoadPretrainedBase, CountParamsBase, SaveTrainableParamsBase
-from uniflow_audio.utils.torch_utilities import (
-    create_alignment_path, create_mask_from_length, loss_with_mask,
-    trim_or_pad_length
+from models.common import (
+    CountParamsBase,
+    LoadPretrainedBase,
+    SaveTrainableParamsBase,
 )
+from models.content_adapter import ContentAdapterBase
+from models.content_encoder.content_encoder import ContentEncoder
 from safetensors.torch import load_file
+from tqdm import tqdm
+from uniflow_audio.utils.torch_utilities import (
+    create_alignment_path,
+    create_mask_from_length,
+    loss_with_mask,
+    trim_or_pad_length,
+)
+
 
 class DiffusionMixin:
     def __init__(
@@ -275,7 +280,7 @@ class CrossAttentionAudioDiffusion(
         content, content_mask, global_duration_pred, _ = \
             self.content_adapter(content, content_mask, instruction, instruction_mask)
         batch_size = content.size(0)
-        
+
         if classifier_free_guidance:
             uncond_content = torch.zeros_like(content)
             uncond_content_mask = content_mask.detach().clone()
@@ -290,7 +295,7 @@ class CrossAttentionAudioDiffusion(
         ) - self.duration_offset
         global_duration_pred *= self.autoencoder.latent_token_rate
         global_duration_pred = torch.round(global_duration_pred)
-        
+
         latent_shape = tuple(
             int(global_duration_pred.max().item()) if dim is None else dim
             for dim in self.autoencoder.latent_shape
@@ -407,7 +412,7 @@ class SingleTaskCrossAttentionAudioDiffusion(CrossAttentionAudioDiffusion
             )
         content, content_mask = content_output["content"], content_output[
             "content_mask"]
-        
+
         if self.training and self.classifier_free_guidance:
             mask_indices = [
                 k for k in range(len(waveform))
@@ -514,7 +519,7 @@ class SingleTaskCrossAttentionAudioDiffusion(CrossAttentionAudioDiffusion
         waveform = self.autoencoder.decode(latent)
 
         return waveform
-  
+
 
 class DummyContentAudioDiffusion(CrossAttentionAudioDiffusion):
     def __init__(
@@ -545,16 +550,16 @@ class DummyContentAudioDiffusion(CrossAttentionAudioDiffusion):
                 U‑Net or Transformer backbone that performs the core denoising
                 operations in latent space.
             content_dim:
-                Dimension of the content embeddings produced by the `content_encoder` 
+                Dimension of the content embeddings produced by the `content_encoder`
                 and `content_adapter`.
             frame_resolution:
                 Time resolution, in seconds, of each content frame when predicting
                 duration alignment. Used when calculating duration loss.
             duration_offset:
                 A small positive offset (frame number) added to predicted durations
-                to ensure numerical stability of log-scaled duration prediction. 
+                to ensure numerical stability of log-scaled duration prediction.
             noise_scheduler_name:
-                Identifier of the pretrained noise scheduler to use. 
+                Identifier of the pretrained noise scheduler to use.
             snr_gamma:
                 Clipping value in min-SNR diffusion loss weighting strategy.
             cfg_drop_ratio:
@@ -916,7 +921,7 @@ class DummyContentAudioDiffusion(CrossAttentionAudioDiffusion):
         waveform = self.autoencoder.decode(latent)
         return waveform
 
-  
+
 class DoubleContentAudioDiffusion(CrossAttentionAudioDiffusion):
     def __init__(
         self,

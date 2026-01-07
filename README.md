@@ -21,7 +21,7 @@
 A **lightweight, configurable** and **modular** training framework based on [Accelerate](https://github.com/huggingface/accelerate) and [Hydra](https://github.com/facebookresearch/hydra).
 
 It **IS**:
-* a trainer wrapping PyTorch, providing some basic utility functions to improve the reusability of PyTorch training code. 
+* a trainer wrapping PyTorch, providing some basic utility functions to improve the reusability of PyTorch training code.
 * built on [*accelerate*](https://github.com/huggingface/accelerate) to support various distributed training / inference environments.
 * built on [*hydra*](https://github.com/facebookresearch/hydra) to support modular training configurations and command line overrides, with potential extended features like parameter sweeping.
 
@@ -34,7 +34,7 @@ It **IS NOT**:
 
 * Avoid writing boilerplates every time. The training loop and some utility functions remain almost the same across different projects, so we take them out as a basic library.
 * The functionality of config loading is managed by Hydra, while distributed training is managed by Accelerate, so you don't need to worry about these details.
-* Maintain **a moderate level of abstraction**. Great libraries like [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable/) and [Transformers](https://huggingface.co/docs/transformers/index) are powerful, but their codebases are too deep for newcomers to understand, or lack convenient interface to modify. We don't want a `Trainer` with dozens of inheritence layers, nor a single `train.py` with all logics in thousands of lines. 
+* Maintain **a moderate level of abstraction**. Great libraries like [PyTorch Lightning](https://lightning.ai/docs/pytorch/stable/) and [Transformers](https://huggingface.co/docs/transformers/index) are powerful, but their codebases are too deep for newcomers to understand, or lack convenient interface to modify. We don't want a `Trainer` with dozens of inheritence layers, nor a single `train.py` with all logics in thousands of lines.
 * Similar codebases can be found: [lightning-hydra-template](https://github.com/ashleve/lightning-hydra-template/), [lightning-accelerate](https://github.com/hoang1007/lightning-accelerate). However, task-specific codes and base codes (base classes and utility functions) should be separated to continuously fix bugs in base codes. Therefore the principle here is to only integrate generic codes into the library, instead of codes designed for specific tasks (CV, NLP, RL, ...)
 
 ### :warning: Why you might not want to use AccelHydra?

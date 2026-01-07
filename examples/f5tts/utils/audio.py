@@ -1,11 +1,10 @@
-import hashlib
 import tempfile
 
-from pydub import AudioSegment, silence
-from librosa.filters import mel as librosa_mel_fn
 import torch
 import torch.nn as nn
 import torchaudio
+from librosa.filters import mel as librosa_mel_fn
+from pydub import AudioSegment, silence
 from transformers import pipeline
 
 # raw wav to mel spec
@@ -200,17 +199,6 @@ def whisper_transcribe(ref_audio, language=None):
 
 def preprocess_ref_audio_text(ref_audio_orig, ref_text, show_info=print):
     show_info("Converting audio...")
-
-    # Compute a hash of the reference audio file
-    with open(ref_audio_orig, "rb") as audio_file:
-        audio_data = audio_file.read()
-        audio_hash = hashlib.md5(audio_data).hexdigest()
-
-    # if audio_hash in _ref_audio_cache:
-    # show_info("Using cached preprocessed reference audio...")
-    # ref_audio = _ref_audio_cache[audio_hash]
-
-    # else:  # first pass, do preprocess
 
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
         temp_path = f.name

@@ -1,5 +1,6 @@
-import numpy as np
 import csv
+
+import numpy as np
 
 sample_rate = 32000
 clip_samples = sample_rate * 10  # Audio clips are 10-second

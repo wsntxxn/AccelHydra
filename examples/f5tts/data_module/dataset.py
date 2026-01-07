@@ -6,10 +6,10 @@ import torch
 import torch.nn as nn
 import torchaudio
 from datasets import Dataset
-from accel_hydra.utils.general import read_jsonl_to_mapping
-
-from utils.general import default
 from utils.audio import MelSpec
+from utils.general import default
+
+from accel_hydra.utils.general import read_jsonl_to_mapping
 
 
 @dataclass(kw_only=True)

@@ -1,13 +1,12 @@
-from dataclasses import dataclass
 import gc
-from pathlib import Path
 from collections import defaultdict
+from dataclasses import dataclass
+from pathlib import Path
 
-import numpy as np
 import torch
+from omegaconf import OmegaConf
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils._pytree import tree_map
-from omegaconf import OmegaConf
 
 from accel_hydra.trainer import Trainer
 from accel_hydra.utils.logging import LoggingLogger

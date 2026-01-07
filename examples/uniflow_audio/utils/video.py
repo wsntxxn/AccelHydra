@@ -1,13 +1,13 @@
-from pathlib import Path
 import os
-from typing import Callable
 import tempfile
+from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import soundfile as sf
-from moviepy import VideoFileClip, AudioFileClip
 import torch
 import torchvision
+from moviepy import AudioFileClip, VideoFileClip
 
 
 def merge_audio_video(

@@ -1,9 +1,10 @@
 import os
-import numpy as np
-from sklearn.cluster import KMeans
-from scipy.stats import norm
-from matplotlib import pyplot as plt
 import pickle as pkl
+
+import numpy as np
+from matplotlib import pyplot as plt
+from scipy.stats import norm
+from sklearn.cluster import KMeans
 
 
 class NDB:

@@ -19,31 +19,17 @@ import torch
 
 torch.multiprocessing.set_sharing_strategy('file_system')
 import argparse
-from collections import defaultdict
-
-import os
-import numpy as np
-import librosa
-from pathlib import Path
-from tqdm import tqdm
-from copy import deepcopy
-
-# Ref: https://github.com/haoheliu/audioldm_eval/tree/main
-# This script uses a locally modified version of audioldm_eval.
-from audioldm_eval import EvaluationHelper
 
 # Ref: https://github.com/LAION-AI/CLAP
 # The ref command for installing: pip install laion-clap
-import laion_clap
 import sys
-sys.path.append("/hpc_stor03/sjtu_home/yixuan.li/work/x_to_audio_generation")
-from utils.general import read_jsonl_to_mapping, audio_dir_to_mapping
 
-import os
-import shutil
-from pathlib import Path
-from laion_clap.clap_module.factory import load_state_dict as clap_load_state_dict
-from path_tta import compute_clap_metrics, AudioTextDataset, evaluate
+# Ref: https://github.com/haoheliu/audioldm_eval/tree/main
+# This script uses a locally modified version of audioldm_eval.
+
+sys.path.append("/hpc_stor03/sjtu_home/yixuan.li/work/x_to_audio_generation")
+
+from path_tta import evaluate
 
 if __name__ == '__main__':
 

@@ -9,6 +9,7 @@ d - dimension
 # ruff: noqa: F722 F821
 
 from __future__ import annotations
+
 import math
 from typing import Optional
 

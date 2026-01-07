@@ -1,6 +1,7 @@
-import torch
-from pathlib import Path
 import os
+from pathlib import Path
+
+import torch
 
 
 def path_to_sharedkey(path, dataset_name, classes=None):

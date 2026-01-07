@@ -1,7 +1,8 @@
-from pathlib import Path
-import pandas as pd
-import json
 import argparse
+import json
+from pathlib import Path
+
+import pandas as pd
 
 parser = argparse.ArgumentParser()
 parser.add_argument(

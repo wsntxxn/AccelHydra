@@ -18,7 +18,11 @@ from torchvision.models.inception import Inception3 as TorchVisionInception3
 
 class FeatureExtractorInceptionV3(TorchVisionInception3):
     def __init__(
-        self, name, features_list, feature_extractor_weights_path=None, **kwargs
+        self,
+        name,
+        features_list,
+        feature_extractor_weights_path=None,
+        **kwargs
     ):
         """Build pretrained InceptionV3
 
@@ -34,18 +38,19 @@ class FeatureExtractorInceptionV3(TorchVisionInception3):
         """
         super().__init__(num_classes=1008, **kwargs)
         self.input_image_size = 299
-        self.provided_feats = ("64", "192", "768", "2048", "logits_unbiased", "logits")
+        self.provided_feats = (
+            "64", "192", "768", "2048", "logits_unbiased", "logits"
+        )
         self.features_list = list(features_list)
 
-        assert type(name) is str, "Feature extractor name must be a string"
+        assert isinstance(name, str), "Feature extractor name must be a string"
         assert type(features_list) in (
             list,
             tuple,
             ListConfig,
         ), "Wrong features list type"
-        assert all(
-            (a in self.provided_feats for a in features_list)
-        ), "Requested features arent on the list"
+        assert all((a in self.provided_feats for a in features_list)
+                  ), "Requested features arent on the list"
         assert len(features_list) == len(
             set(features_list)
         ), "Duplicate features requested"
@@ -65,7 +70,9 @@ class FeatureExtractorInceptionV3(TorchVisionInception3):
 
         if feature_extractor_weights_path is None:
             with redirect_stdout(sys.stderr):
-                state_dict = load_state_dict_from_url(PT_INCEPTION_URL, progress=True)
+                state_dict = load_state_dict_from_url(
+                    PT_INCEPTION_URL, progress=True
+                )
         else:
             state_dict = torch.load(feature_extractor_weights_path)
         self.load_state_dict(state_dict)
@@ -91,7 +98,9 @@ class FeatureExtractorInceptionV3(TorchVisionInception3):
         # N x 3 x 299 x 299
 
         # x = (x - 128) * torch.tensor(0.0078125, dtype=torch.float32, device=x.device)  # happening in graph
-        x = (x - 128) / 128  # but this gives bit-exact output _of this step_ too
+        x = (
+            x - 128
+        ) / 128  # but this gives bit-exact output _of this step_ too
         # N x 3 x 299 x 299
 
         x = self.Conv2d_1a_3x3(x)
@@ -198,14 +207,12 @@ class FeatureExtractorInceptionV3(TorchVisionInception3):
         assert type(features) is tuple and len(features) == len(
             self.features_list
         ), message
-        return dict(
-            ((name, feature) for name, feature in zip(self.features_list, features))
-        )
+        return dict(((name, feature)
+                     for name, feature in zip(self.features_list, features)))
 
 
 class InceptionA(nn.Module):
     """Block from torchvision patched to be compatible with TensorFlow implementation"""
-
     def __init__(self, in_channels, pool_features):
         super(InceptionA, self).__init__()
         self.branch1x1 = BasicConv2d(in_channels, 64, kernel_size=1)
@@ -217,7 +224,9 @@ class InceptionA(nn.Module):
         self.branch3x3dbl_2 = BasicConv2d(64, 96, kernel_size=3, padding=1)
         self.branch3x3dbl_3 = BasicConv2d(96, 96, kernel_size=3, padding=1)
 
-        self.branch_pool = BasicConv2d(in_channels, pool_features, kernel_size=1)
+        self.branch_pool = BasicConv2d(
+            in_channels, pool_features, kernel_size=1
+        )
 
     def forward(self, x):
         branch1x1 = self.branch1x1(x)
@@ -241,21 +250,32 @@ class InceptionA(nn.Module):
 
 class InceptionC(nn.Module):
     """Block from torchvision patched to be compatible with TensorFlow implementation"""
-
     def __init__(self, in_channels, channels_7x7):
         super(InceptionC, self).__init__()
         self.branch1x1 = BasicConv2d(in_channels, 192, kernel_size=1)
 
         c7 = channels_7x7
         self.branch7x7_1 = BasicConv2d(in_channels, c7, kernel_size=1)
-        self.branch7x7_2 = BasicConv2d(c7, c7, kernel_size=(1, 7), padding=(0, 3))
-        self.branch7x7_3 = BasicConv2d(c7, 192, kernel_size=(7, 1), padding=(3, 0))
+        self.branch7x7_2 = BasicConv2d(
+            c7, c7, kernel_size=(1, 7), padding=(0, 3)
+        )
+        self.branch7x7_3 = BasicConv2d(
+            c7, 192, kernel_size=(7, 1), padding=(3, 0)
+        )
 
         self.branch7x7dbl_1 = BasicConv2d(in_channels, c7, kernel_size=1)
-        self.branch7x7dbl_2 = BasicConv2d(c7, c7, kernel_size=(7, 1), padding=(3, 0))
-        self.branch7x7dbl_3 = BasicConv2d(c7, c7, kernel_size=(1, 7), padding=(0, 3))
-        self.branch7x7dbl_4 = BasicConv2d(c7, c7, kernel_size=(7, 1), padding=(3, 0))
-        self.branch7x7dbl_5 = BasicConv2d(c7, 192, kernel_size=(1, 7), padding=(0, 3))
+        self.branch7x7dbl_2 = BasicConv2d(
+            c7, c7, kernel_size=(7, 1), padding=(3, 0)
+        )
+        self.branch7x7dbl_3 = BasicConv2d(
+            c7, c7, kernel_size=(1, 7), padding=(0, 3)
+        )
+        self.branch7x7dbl_4 = BasicConv2d(
+            c7, c7, kernel_size=(7, 1), padding=(3, 0)
+        )
+        self.branch7x7dbl_5 = BasicConv2d(
+            c7, 192, kernel_size=(1, 7), padding=(0, 3)
+        )
 
         self.branch_pool = BasicConv2d(in_channels, 192, kernel_size=1)
 
@@ -284,19 +304,26 @@ class InceptionC(nn.Module):
 
 class InceptionE_1(nn.Module):
     """First InceptionE block from torchvision patched to be compatible with TensorFlow implementation"""
-
     def __init__(self, in_channels):
         super(InceptionE_1, self).__init__()
         self.branch1x1 = BasicConv2d(in_channels, 320, kernel_size=1)
 
         self.branch3x3_1 = BasicConv2d(in_channels, 384, kernel_size=1)
-        self.branch3x3_2a = BasicConv2d(384, 384, kernel_size=(1, 3), padding=(0, 1))
-        self.branch3x3_2b = BasicConv2d(384, 384, kernel_size=(3, 1), padding=(1, 0))
+        self.branch3x3_2a = BasicConv2d(
+            384, 384, kernel_size=(1, 3), padding=(0, 1)
+        )
+        self.branch3x3_2b = BasicConv2d(
+            384, 384, kernel_size=(3, 1), padding=(1, 0)
+        )
 
         self.branch3x3dbl_1 = BasicConv2d(in_channels, 448, kernel_size=1)
         self.branch3x3dbl_2 = BasicConv2d(448, 384, kernel_size=3, padding=1)
-        self.branch3x3dbl_3a = BasicConv2d(384, 384, kernel_size=(1, 3), padding=(0, 1))
-        self.branch3x3dbl_3b = BasicConv2d(384, 384, kernel_size=(3, 1), padding=(1, 0))
+        self.branch3x3dbl_3a = BasicConv2d(
+            384, 384, kernel_size=(1, 3), padding=(0, 1)
+        )
+        self.branch3x3dbl_3b = BasicConv2d(
+            384, 384, kernel_size=(3, 1), padding=(1, 0)
+        )
 
         self.branch_pool = BasicConv2d(in_channels, 192, kernel_size=1)
 
@@ -330,19 +357,26 @@ class InceptionE_1(nn.Module):
 
 class InceptionE_2(nn.Module):
     """Second InceptionE block from torchvision patched to be compatible with TensorFlow implementation"""
-
     def __init__(self, in_channels):
         super(InceptionE_2, self).__init__()
         self.branch1x1 = BasicConv2d(in_channels, 320, kernel_size=1)
 
         self.branch3x3_1 = BasicConv2d(in_channels, 384, kernel_size=1)
-        self.branch3x3_2a = BasicConv2d(384, 384, kernel_size=(1, 3), padding=(0, 1))
-        self.branch3x3_2b = BasicConv2d(384, 384, kernel_size=(3, 1), padding=(1, 0))
+        self.branch3x3_2a = BasicConv2d(
+            384, 384, kernel_size=(1, 3), padding=(0, 1)
+        )
+        self.branch3x3_2b = BasicConv2d(
+            384, 384, kernel_size=(3, 1), padding=(1, 0)
+        )
 
         self.branch3x3dbl_1 = BasicConv2d(in_channels, 448, kernel_size=1)
         self.branch3x3dbl_2 = BasicConv2d(448, 384, kernel_size=3, padding=1)
-        self.branch3x3dbl_3a = BasicConv2d(384, 384, kernel_size=(1, 3), padding=(0, 1))
-        self.branch3x3dbl_3b = BasicConv2d(384, 384, kernel_size=(3, 1), padding=(1, 0))
+        self.branch3x3dbl_3a = BasicConv2d(
+            384, 384, kernel_size=(1, 3), padding=(0, 1)
+        )
+        self.branch3x3dbl_3b = BasicConv2d(
+            384, 384, kernel_size=(3, 1), padding=(1, 0)
+        )
 
         self.branch_pool = BasicConv2d(in_channels, 192, kernel_size=1)
 
@@ -420,15 +454,18 @@ def interpolate_bilinear_2d_like_tensorflow1x(
         if size is None and scale_factor is None:
             raise ValueError("either size or scale_factor should be defined")
         if size is not None and scale_factor is not None:
-            raise ValueError("only one of size or scale_factor should be defined")
+            raise ValueError(
+                "only one of size or scale_factor should be defined"
+            )
         if (
-            scale_factor is not None
-            and isinstance(scale_factor, tuple)
-            and len(scale_factor) != dim
+            scale_factor is not None and isinstance(scale_factor, tuple) and
+            len(scale_factor) != dim
         ):
             raise ValueError(
                 "scale_factor shape must match input shape. "
-                "Input is {}D, scale_factor size is {}".format(dim, len(scale_factor))
+                "Input is {}D, scale_factor size is {}".format(
+                    dim, len(scale_factor)
+                )
             )
 
     is_tracing = torch._C._get_tracing_state()
@@ -445,17 +482,12 @@ def interpolate_bilinear_2d_like_tensorflow1x(
 
         # make scale_factor a tensor in tracing so constant doesn't get baked in
         if is_tracing:
-            return [
-                (
-                    torch.floor(
-                        (
-                            input.size(i + 2).float()
-                            * torch.tensor(scale_factors[i], dtype=torch.float32)
-                        ).float()
-                    )
-                )
-                for i in range(dim)
-            ]
+            return [(
+                torch.floor((
+                    input.size(i + 2).float() *
+                    torch.tensor(scale_factors[i], dtype=torch.float32)
+                ).float())
+            ) for i in range(dim)]
         else:
             return [
                 int(math.floor(float(input.size(i + 2)) * scale_factors[i]))
@@ -479,33 +511,44 @@ def interpolate_bilinear_2d_like_tensorflow1x(
     scale_y = tf_calculate_resize_scale(input.shape[2], out_size[0])
 
     def resample_using_grid_sample():
-        grid_x = torch.arange(0, out_size[1], 1, dtype=input.dtype, device=input.device)
+        grid_x = torch.arange(
+            0, out_size[1], 1, dtype=input.dtype, device=input.device
+        )
         grid_x = grid_x * (2 * scale_x / (input.shape[3] - 1)) - 1
 
-        grid_y = torch.arange(0, out_size[0], 1, dtype=input.dtype, device=input.device)
+        grid_y = torch.arange(
+            0, out_size[0], 1, dtype=input.dtype, device=input.device
+        )
         grid_y = grid_y * (2 * scale_y / (input.shape[2] - 1)) - 1
 
         grid_x = grid_x.view(1, out_size[1]).repeat(out_size[0], 1)
         grid_y = grid_y.view(out_size[0], 1).repeat(1, out_size[1])
 
-        grid_xy = torch.cat(
-            (grid_x.unsqueeze(-1), grid_y.unsqueeze(-1)), dim=2
-        ).unsqueeze(0)
+        grid_xy = torch.cat((grid_x.unsqueeze(-1), grid_y.unsqueeze(-1)),
+                            dim=2).unsqueeze(0)
         grid_xy = grid_xy.repeat(input.shape[0], 1, 1, 1)
 
         out = F.grid_sample(
-            input, grid_xy, mode="bilinear", padding_mode="border", align_corners=True
+            input,
+            grid_xy,
+            mode="bilinear",
+            padding_mode="border",
+            align_corners=True
         )
         return out
 
     def resample_manually():
-        grid_x = torch.arange(0, out_size[1], 1, dtype=input.dtype, device=input.device)
+        grid_x = torch.arange(
+            0, out_size[1], 1, dtype=input.dtype, device=input.device
+        )
         grid_x = grid_x * torch.tensor(scale_x, dtype=torch.float32)
         grid_x_lo = grid_x.long()
         grid_x_hi = (grid_x_lo + 1).clamp_max(input.shape[3] - 1)
         grid_dx = grid_x - grid_x_lo.float()
 
-        grid_y = torch.arange(0, out_size[0], 1, dtype=input.dtype, device=input.device)
+        grid_y = torch.arange(
+            0, out_size[0], 1, dtype=input.dtype, device=input.device
+        )
         grid_y = grid_y * torch.tensor(scale_y, dtype=torch.float32)
         grid_y_lo = grid_y.long()
         grid_y_hi = (grid_y_lo + 1).clamp_max(input.shape[2] - 1)

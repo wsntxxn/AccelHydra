@@ -6,15 +6,14 @@ Frechet distance implementation adapted from: https://github.com/mseitzer/pytorc
 VGGish adapted from: https://github.com/harritaylor/torchvggish
 """
 import os
+
 import numpy as np
 import torch
-
-from torch import nn
-from scipy import linalg
-from tqdm import tqdm
-from multiprocessing.dummy import Pool as ThreadPool
 from audioldm_eval.datasets.load_mel import WaveDataset
+from scipy import linalg
+from torch import nn
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 
 class FrechetAudioDistance:

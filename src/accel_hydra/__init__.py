@@ -7,5 +7,7 @@ from importlib.metadata import version
 __version__ = version("accel_hydra")
 __license__ = "MIT"
 
-from .trainer import Trainer, MetricMonitor
 from .train_launcher import TrainLauncher
+from .trainer import MetricMonitor, Trainer
+
+__all__ = ["Trainer", "MetricMonitor", "TrainLauncher"]

@@ -1,4 +1,5 @@
 from typing import Any
+
 import torch
 import torch.nn as nn
 
@@ -26,7 +27,7 @@ class ContentEncoder(nn.Module):
         self.video_encoder = video_encoder
         self.speech_encoder = speech_encoder
         self.sketch_encoder = sketch_encoder
-        
+
     def encode_content(
         self, batch_content: list[Any], batch_task: list[str],
         device: str | torch.device
@@ -36,7 +37,7 @@ class ContentEncoder(nn.Module):
         batch_la_content_output = []
 
         zero_la_content = torch.zeros(1, 1, self.embed_dim, device=device)
-        
+
         for content, task in zip(batch_content, batch_task):
             if task == "audio_super_resolution" or task == "speech_enhancement":
                 content_dict = {
@@ -58,7 +59,7 @@ class ContentEncoder(nn.Module):
                 }
             elif task == "speech_to_audio":
                 input_dict = {
-                        "embed": content, 
+                        "embed": content,
                         "embed_len": torch.tensor([content.shape[1]], dtype=torch.int).to(device),
                     }
                 content_output_dict = self.speech_encoder(input_dict)

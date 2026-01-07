@@ -1,5 +1,6 @@
-import numpy as np
 import unittest
+
+import numpy as np
 
 from accel_hydra.data_module.sampler import BucketSampler
 

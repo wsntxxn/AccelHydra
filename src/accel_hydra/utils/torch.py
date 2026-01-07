@@ -1,7 +1,7 @@
 import logging
 import math
-from typing import Callable
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import torch
@@ -37,7 +37,7 @@ def merge_matched_keys(
 
     Returns:
         dict[str, torch.Tensor]:
-            The updated state dict, where parameters with matched keys and shape are 
+            The updated state dict, where parameters with matched keys and shape are
             updated with values in `state_dict`.
     """
     pretrained_dict = {}
@@ -113,15 +113,15 @@ def loss_with_mask(
 def trim_or_pad_length(x: torch.Tensor, target_length: int, length_dim: int):
     """
     Adjusts the size of the specified dimension of tensor x to match `target_length`.
-    
+
     Args:
         x:
             Input tensor.
-        target_length: 
+        target_length:
             Desired size of the specified dimension.
-        length_dim: 
+        length_dim:
             The dimension to modify.
-    
+
     Returns:
         torch.Tensor: The adjusted tensor.
     """
@@ -250,7 +250,7 @@ def contains_nan(data):
 
 def check_nan_in_batch(batch):
     """check if batch contains NaN and return nan audio ids"""
-    assert type(batch) == dict, "batch type error"
+    assert isinstance(batch, dict), "batch type error"
     nan_audio_ids = []
     audio_ids = batch["audio_id"]
     audio_id2content = {}

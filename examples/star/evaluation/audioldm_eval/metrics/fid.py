@@ -1,6 +1,7 @@
-import torch
 import numpy as np
 import scipy.linalg
+import torch
+
 
 # FID评价保真度，越小越好
 def calculate_fid(
@@ -49,7 +50,7 @@ def calculate_fid(
     if np.min(eigvals2) < 0:
         print("Min eigval of sigma2:", np.min(eigvals2))
         sigma2 = sigma2 + eps * np.eye(sigma2.shape[0])
-        eigvals2 = np.linalg.eigvals(sigma2)      
+        eigvals2 = np.linalg.eigvals(sigma2)
         print("修正后的最小特征值 (sigma2):", np.min(eigvals2))
 
     assert (

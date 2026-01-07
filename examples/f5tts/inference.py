@@ -1,25 +1,18 @@
-from pathlib import Path
 import os
+from pathlib import Path
 
+import hydra
 import torch
 import torchaudio
-import hydra
 from accelerate import Accelerator
-
 from omegaconf import OmegaConf
 from safetensors.torch import load_file
 from tqdm import tqdm
-from accel_hydra.models.common import LoadPretrainedBase
-from accel_hydra.utils import load_config_from_cli
-
 from utils.config import register_omegaconf_resolvers
 from utils.vocoder import load_vocoder
 
-try:
-    import torch_npu
-    from torch_npu.contrib import transfer_to_npu
-except:
-    pass
+from accel_hydra.models.common import LoadPretrainedBase
+from accel_hydra.utils import load_config_from_cli
 
 
 def main():

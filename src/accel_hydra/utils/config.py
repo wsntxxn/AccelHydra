@@ -1,5 +1,5 @@
-from pathlib import Path
 import argparse
+from pathlib import Path
 from typing import Callable
 
 import hydra
@@ -18,7 +18,7 @@ def register_omegaconf_resolvers(clear_resolvers: bool = True) -> None:
     """
     Register custom resolver for hydra configs, which can be used in YAML
     files for dynamically setting values.
-    
+
     Args:
         clear_resolvers: If True, clear all existing resolvers before registering.
                         Set to False if you want to extend existing resolvers.

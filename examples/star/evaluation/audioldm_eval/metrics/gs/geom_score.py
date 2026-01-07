@@ -1,8 +1,8 @@
-from __future__ import absolute_import
-from __future__ import print_function
-from .utils import relative
-from .utils import witness
+from __future__ import absolute_import, print_function
+
 import numpy as np
+
+from .utils import relative, witness
 
 
 def rlt(X, L_0=64, gamma=None, i_max=100):

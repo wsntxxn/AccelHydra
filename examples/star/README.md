@@ -1,6 +1,6 @@
 # STAR
 
-STAR is the first end-to-end speech-to-audio generation framework. 
+STAR is the first end-to-end speech-to-audio generation framework.
 
 ## Data preparation
 
@@ -22,7 +22,7 @@ You may use them as reference to process your own data.
 
 An example is presented in [data/star_audiocaps_speecht5](./data/star_audiocaps_speecht5)
 
-Then, you **should** add **2** yaml files to configs, the format can be seen in [configs/data/star_audiocaps_speecht5.yaml](./configs/data/star_audiocaps_speecht5.yaml) and [configs/data/datasets/star_audiocaps_speecht5.yaml](./configs/data/datasets/star_audiocaps_speecht5.yaml). 
+Then, you **should** add **2** yaml files to configs, the format can be seen in [configs/data/star_audiocaps_speecht5.yaml](./configs/data/star_audiocaps_speecht5.yaml) and [configs/data/datasets/star_audiocaps_speecht5.yaml](./configs/data/datasets/star_audiocaps_speecht5.yaml).
 
 After that , you **should** add an entry to [configs/data/default.yaml](./configs/data/default.yaml)
 
@@ -51,4 +51,3 @@ To perform evaluation with inference results, you could use this command:
 ```bash
 bash scripts/eval.sh
 ```
-

@@ -1,8 +1,11 @@
 import math
+
 import torch
 import torch.nn as nn
-
-from uniflow_audio.utils.torch_utilities import concat_non_padding, restore_from_concat
+from uniflow_audio.utils.torch_utilities import (
+    concat_non_padding,
+    restore_from_concat,
+)
 
 
 ######################

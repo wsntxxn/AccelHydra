@@ -1,37 +1,38 @@
-import hydra
-from omegaconf import OmegaConf
-from accelerate.state import PartialState
-from torch.utils.data import DataLoader
 from typing import Callable
 
-from .trainer import Trainer
+import hydra
+from accelerate.state import PartialState
+from omegaconf import OmegaConf
+from torch.utils.data import DataLoader
+
 from .models import CountParamsBase
+from .trainer import Trainer
 from .utils.config import load_config_from_cli, register_omegaconf_resolvers
-from .utils.general import setup_resume_cfg
 from .utils.data import init_dataloader_from_config
+from .utils.general import setup_resume_cfg
 from .utils.lr_scheduler import (
-    get_warmup_steps,
     get_dataloader_one_pass_outside_steps,
-    get_total_training_steps,
-    get_steps_inside_accelerator_from_outside_steps,
     get_dataloader_one_pass_steps_inside_accelerator,
+    get_steps_inside_accelerator_from_outside_steps,
+    get_total_training_steps,
+    get_warmup_steps,
     lr_scheduler_param_adapter,
 )
 
 
 class TrainLauncher:
     """Base class for training launchers that handle configuration and training setup.
-    
+
     This class provides a structured way to launch training with Hydra configuration.
     Subclasses can override specific methods to customize the training process.
     """
     @staticmethod
     def get_register_resolver_fn() -> Callable:
         """Get the function to register custom OmegaConf resolvers.
-        
+
         Subclasses can override this staticmethod to return a custom resolver registration function.
         The returned function should be callable without arguments.
-        
+
         Returns:
             Callable: A function that registers custom OmegaConf resolvers
         """
@@ -39,13 +40,13 @@ class TrainLauncher:
 
     def get_steps_for_lr_scheduler(self, train_dataloader: DataLoader):
         """Calculate steps for LR scheduler.
-        
+
         This method handles the complexity of step counting in distributed training
         with gradient accumulation.
-        
+
         Args:
             train_dataloader: The training dataloader
-            
+
         Returns:
             tuple: (num_training_updates, num_warmup_updates) where num_warmup_updates can be None
         """
@@ -108,13 +109,13 @@ class TrainLauncher:
 
     def run(self, ):
         """Main entry point that orchestrates the training setup and launch.
-        
+
         This method follows the standard training setup flow:
         1. Load configuration
         2. Setup resume if needed
         3. Create model, dataloaders, optimizer, LR scheduler, loss function
         4. Create trainer and start training
-        
+
         Subclasses can override this method to customize the entire flow, or
         override individual methods to customize specific steps.
         """

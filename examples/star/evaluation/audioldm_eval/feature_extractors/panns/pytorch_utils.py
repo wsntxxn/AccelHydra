@@ -1,5 +1,6 @@
-import numpy as np
 import time
+
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -27,8 +28,8 @@ def do_mixup(x, mixup_lambda):
       out: (batch_size, ...)
     """
     out = (
-        x[0::2].transpose(0, -1) * mixup_lambda[0::2]
-        + x[1::2].transpose(0, -1) * mixup_lambda[1::2]
+        x[0::2].transpose(0, -1) * mixup_lambda[0::2] +
+        x[1::2].transpose(0, -1) * mixup_lambda[1::2]
     ).transpose(0, -1)
     return out
 
@@ -64,13 +65,17 @@ def forward(model, generator, return_input=False, return_target=False):
     # Forward data to a model in mini-batches
     for n, batch_data_dict in enumerate(generator):
         print(n)
-        batch_waveform = move_data_to_device(batch_data_dict["waveform"], device)
+        batch_waveform = move_data_to_device(
+            batch_data_dict["waveform"], device
+        )
 
         with torch.no_grad():
             model.eval()
             batch_output = model(batch_waveform)
 
-        append_to_dict(output_dict, "audio_name", batch_data_dict["audio_name"])
+        append_to_dict(
+            output_dict, "audio_name", batch_data_dict["audio_name"]
+        )
 
         append_to_dict(
             output_dict,
@@ -93,17 +98,20 @@ def forward(model, generator, return_input=False, return_target=False):
             )
 
         if return_input:
-            append_to_dict(output_dict, "waveform", batch_data_dict["waveform"])
+            append_to_dict(
+                output_dict, "waveform", batch_data_dict["waveform"]
+            )
 
         if return_target:
             if "target" in batch_data_dict.keys():
-                append_to_dict(output_dict, "target", batch_data_dict["target"])
+                append_to_dict(
+                    output_dict, "target", batch_data_dict["target"]
+                )
 
         if n % 10 == 0:
             print(
-                " --- Inference time: {:.3f} s / 10 iterations ---".format(
-                    time.time() - time1
-                )
+                " --- Inference time: {:.3f} s / 10 iterations ---".
+                format(time.time() - time1)
             )
             time1 = time.time()
 
@@ -166,10 +174,8 @@ def count_flops(model, audio_length):
         output_channels, output_height, output_width = output[0].size()
 
         kernel_ops = (
-            self.kernel_size[0]
-            * self.kernel_size[1]
-            * (self.in_channels / self.groups)
-            * (2 if multiply_adds else 1)
+            self.kernel_size[0] * self.kernel_size[1] *
+            (self.in_channels / self.groups) * (2 if multiply_adds else 1)
         )
         bias_ops = 1 if self.bias is not None else 0
 
@@ -185,9 +191,8 @@ def count_flops(model, audio_length):
         output_channels, output_length = output[0].size()
 
         kernel_ops = (
-            self.kernel_size[0]
-            * (self.in_channels / self.groups)
-            * (2 if multiply_adds else 1)
+            self.kernel_size[0] * (self.in_channels / self.groups) *
+            (2 if multiply_adds else 1)
         )
         bias_ops = 1 if self.bias is not None else 0
 
@@ -253,13 +258,16 @@ def count_flops(model, audio_length):
                 net.register_forward_hook(conv1d_hook)
             elif isinstance(net, nn.Linear):
                 net.register_forward_hook(linear_hook)
-            elif isinstance(net, nn.BatchNorm2d) or isinstance(net, nn.BatchNorm1d):
+            elif isinstance(net, nn.BatchNorm2d
+                           ) or isinstance(net, nn.BatchNorm1d):
                 net.register_forward_hook(bn_hook)
             elif isinstance(net, nn.ReLU):
                 net.register_forward_hook(relu_hook)
-            elif isinstance(net, nn.AvgPool2d) or isinstance(net, nn.MaxPool2d):
+            elif isinstance(net,
+                            nn.AvgPool2d) or isinstance(net, nn.MaxPool2d):
                 net.register_forward_hook(pooling2d_hook)
-            elif isinstance(net, nn.AvgPool1d) or isinstance(net, nn.MaxPool1d):
+            elif isinstance(net,
+                            nn.AvgPool1d) or isinstance(net, nn.MaxPool1d):
                 net.register_forward_hook(pooling1d_hook)
             else:
                 print("Warning: flop of module {} is not counted!".format(net))
@@ -273,16 +281,11 @@ def count_flops(model, audio_length):
     device = device = next(model.parameters()).device
     input = torch.rand(1, audio_length).to(device)
 
-    out = model(input)
+    _ = model(input)
 
     total_flops = (
-        sum(list_conv2d)
-        + sum(list_conv1d)
-        + sum(list_linear)
-        + sum(list_bn)
-        + sum(list_relu)
-        + sum(list_pooling2d)
-        + sum(list_pooling1d)
+        sum(list_conv2d) + sum(list_conv1d) + sum(list_linear) + sum(list_bn) +
+        sum(list_relu) + sum(list_pooling2d) + sum(list_pooling1d)
     )
 
     return total_flops

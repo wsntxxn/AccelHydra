@@ -1,12 +1,14 @@
+from inspect import isfunction
+
+import einops
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint
-import einops
 from einops import rearrange, repeat
-from inspect import isfunction
-from .rotary import RotaryEmbedding
+
 from .modules import RMSNorm
+from .rotary import RotaryEmbedding
 
 if hasattr(nn.functional, 'scaled_dot_product_attention'):
     ATTENTION_MODE = 'flash'

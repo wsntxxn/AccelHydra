@@ -1,7 +1,5 @@
 import numpy
-from numpy import cov
-from numpy import trace
-from numpy import iscomplexobj
+from numpy import cov, iscomplexobj, trace
 from numpy.random import random
 from scipy.linalg import sqrtm
 

@@ -1,16 +1,15 @@
-import sys
 import os
+import sys
 
 os.environ[
     "BIGVGAN_MODULE_PATH"
 ] = "/mnt/shared-storage-user/xuxuenan/workspace/f5tts/src/third_party/BigVGAN"
 sys.path.insert(1, os.environ["BIGVGAN_MODULE_PATH"])
 
+import bigvgan
 import torch
 from huggingface_hub import hf_hub_download
 from vocos import Vocos
-
-import bigvgan
 
 device = (
     "cuda" if torch.cuda.is_available() else "xpu" if torch.xpu.is_available()

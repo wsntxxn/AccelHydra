@@ -1,22 +1,29 @@
-import os
-import torch
 import datetime
+import os
+
 import numpy as np
+import torch
+import torch.distributed as dist
 import torch.multiprocessing as mp
 import torchaudio.transforms as T
-from transformers import Wav2Vec2Processor, AutoModel, Wav2Vec2FeatureExtractor
-from torch.utils.data import DataLoader, DistributedSampler
-from torch.nn.parallel import DistributedDataParallel as DDP
-import torch.distributed as dist
-from audioldm_eval.datasets.load_mel import WaveDataset
-from audioldm_eval.metrics.fad import FrechetAudioDistance
-from audioldm_eval import calculate_fid, calculate_isc, calculate_kid, calculate_kl
+from audioldm_eval import calculate_fid, calculate_isc, calculate_kl
+from audioldm_eval.audio.tools import load_pickle, save_pickle, write_json
+from audioldm_eval.datasets.load_mel import MelPairedDataset, WaveDataset
 from audioldm_eval.feature_extractors.panns import Cnn14
-from audioldm_eval.audio.tools import save_pickle, load_pickle, write_json, load_json
+from audioldm_eval.metrics.fad import FrechetAudioDistance
+from skimage.metrics import peak_signal_noise_ratio as psnr
+from skimage.metrics import structural_similarity as ssim
+from ssr_eval.metrics import AudioMetrics
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data import DataLoader, DistributedSampler
 from tqdm import tqdm
+from transformers import AutoModel, Wav2Vec2FeatureExtractor
+
 
 class EvaluationHelperParallel:
-    def __init__(self, sampling_rate, num_gpus, batch_size=1, backbone="mert") -> None:
+    def __init__(
+        self, sampling_rate, num_gpus, batch_size=1, backbone="mert"
+    ) -> None:
         self.sampling_rate = sampling_rate
         self.num_gpus = num_gpus
         self.backbone = backbone
@@ -33,17 +40,26 @@ class EvaluationHelperParallel:
 
     def init_models(self, rank):
         self.device = torch.device(f"cuda:{rank}")
-        self.frechet = FrechetAudioDistance(use_pca=False, use_activation=False, verbose=True)
+        self.frechet = FrechetAudioDistance(
+            use_pca=False, use_activation=False, verbose=True
+        )
+        self.lsd_metric = AudioMetrics(self.sampling_rate)
         self.frechet.model = self.frechet.model.to(self.device)
 
         features_list = ["2048", "logits"]
-        
+
         if self.backbone == "mert":
-            self.mel_model = AutoModel.from_pretrained("m-a-p/MERT-v1-95M", trust_remote_code=True)
-            self.processor = Wav2Vec2FeatureExtractor.from_pretrained("m-a-p/MERT-v1-95M",trust_remote_code=True)
+            self.mel_model = AutoModel.from_pretrained(
+                "m-a-p/MERT-v1-95M", trust_remote_code=True
+            )
+            self.processor = Wav2Vec2FeatureExtractor.from_pretrained(
+                "m-a-p/MERT-v1-95M", trust_remote_code=True
+            )
             self.target_sample_rate = self.processor.sampling_rate
-            self.resampler = T.Resample(orig_freq=self.sampling_rate, new_freq=self.target_sample_rate).to(self.device)
-            
+            self.resampler = T.Resample(
+                orig_freq=self.sampling_rate, new_freq=self.target_sample_rate
+            ).to(self.device)
+
         elif self.backbone == "cnn14":
             if self.sampling_rate == 16000:
                 self.mel_model = Cnn14(
@@ -68,8 +84,10 @@ class EvaluationHelperParallel:
                     classes_num=527,
                 )
             else:
-                raise ValueError("We only support the evaluation on 16kHz and 32kHz sampling rate.")
-        
+                raise ValueError(
+                    "We only support the evaluation on 16kHz and 32kHz sampling rate."
+                )
+
         else:
             raise ValueError("Backbone not supported")
 
@@ -77,8 +95,13 @@ class EvaluationHelperParallel:
         self.mel_model.eval()
 
     def main(self, generate_files_path, groundtruth_path, limit_num=None):
-        mp.spawn(self.run, args=(generate_files_path, groundtruth_path, limit_num), nprocs=self.num_gpus, join=True)
-    
+        mp.spawn(
+            self.run,
+            args=(generate_files_path, groundtruth_path, limit_num),
+            nprocs=self.num_gpus,
+            join=True
+        )
+
     def get_featuresdict(self, rank, dataloader):
         out = None
         out_meta = {"file_path_": []}
@@ -90,10 +113,21 @@ class EvaluationHelperParallel:
                 with torch.no_grad():
                     if self.backbone == "mert":
                         waveform = self.resampler(waveform[0])
-                        mert_input = self.processor(waveform, sampling_rate=self.target_sample_rate, return_tensors="pt").to(self.device)
-                        mert_output = self.mel_model(**mert_input, output_hidden_states=True)
-                        time_reduced_hidden_states = torch.stack(mert_output.hidden_states).squeeze().mean(dim=1)
-                        featuresdict = {"2048": time_reduced_hidden_states, "logits": time_reduced_hidden_states}
+                        mert_input = self.processor(
+                            waveform,
+                            sampling_rate=self.target_sample_rate,
+                            return_tensors="pt"
+                        ).to(self.device)
+                        mert_output = self.mel_model(
+                            **mert_input, output_hidden_states=True
+                        )
+                        time_reduced_hidden_states = torch.stack(
+                            mert_output.hidden_states
+                        ).squeeze().mean(dim=1)
+                        featuresdict = {
+                            "2048": time_reduced_hidden_states,
+                            "logits": time_reduced_hidden_states
+                        }
                     elif self.backbone == "cnn14":
                         featuresdict = self.mel_model(waveform)
 
@@ -102,8 +136,11 @@ class EvaluationHelperParallel:
                 if out is None:
                     out = featuresdict
                 else:
-                    out = {k: torch.cat([out[k], featuresdict[k]], dim=0) for k in out.keys()}
-                
+                    out = {
+                        k: torch.cat([out[k], featuresdict[k]], dim=0)
+                        for k in out.keys()
+                    }
+
                 out_meta["file_path_"].extend(filename)
             except Exception as e:
                 print(f"Classifier Inference error on rank {rank}: ", e)
@@ -130,26 +167,51 @@ class EvaluationHelperParallel:
         self.setup(rank, self.num_gpus)
         self.init_models(rank)
 
-        same_name = self.get_filename_intersection_ratio(generate_files_path, groundtruth_path, limit_num=limit_num)
+        same_name = self.get_filename_intersection_ratio(
+            generate_files_path, groundtruth_path, limit_num=limit_num
+        )
 
-        metrics = self.calculate_metrics(rank, generate_files_path, groundtruth_path, same_name, limit_num) # recalculate = True
+        metrics = self.calculate_metrics(
+            rank, generate_files_path, groundtruth_path, same_name, limit_num
+        )  # recalculate = True
 
         if rank == 0:
             print("\n".join((f"{k}: {v:.7f}" for k, v in metrics.items())))
-            json_path = os.path.join(os.path.dirname(generate_files_path), f"{self.get_current_time()}_{os.path.basename(generate_files_path)}.json")
+            json_path = os.path.join(
+                os.path.dirname(generate_files_path),
+                f"{self.get_current_time()}_{os.path.basename(generate_files_path)}.json"
+            )
             write_json(metrics, json_path)
 
         self.cleanup()
 
-    def calculate_metrics(self, rank, generate_files_path, groundtruth_path, same_name, limit_num=None, calculate_psnr_ssim=False, calculate_lsd=False, recalculate=False):
+    def calculate_metrics(
+        self,
+        rank,
+        generate_files_path,
+        groundtruth_path,
+        same_name,
+        limit_num=None,
+        calculate_psnr_ssim=False,
+        calculate_lsd=False,
+        recalculate=False
+    ):
         torch.manual_seed(0)
         num_workers = 6
 
-        output_dataset = WaveDataset(generate_files_path, self.sampling_rate, limit_num=limit_num)
-        result_dataset = WaveDataset(groundtruth_path, self.sampling_rate, limit_num=limit_num)
+        output_dataset = WaveDataset(
+            generate_files_path, self.sampling_rate, limit_num=limit_num
+        )
+        result_dataset = WaveDataset(
+            groundtruth_path, self.sampling_rate, limit_num=limit_num
+        )
 
-        output_sampler = DistributedSampler(output_dataset, num_replicas=self.num_gpus, rank=rank)
-        result_sampler = DistributedSampler(result_dataset, num_replicas=self.num_gpus, rank=rank)
+        output_sampler = DistributedSampler(
+            output_dataset, num_replicas=self.num_gpus, rank=rank
+        )
+        result_sampler = DistributedSampler(
+            result_dataset, num_replicas=self.num_gpus, rank=rank
+        )
 
         outputloader = DataLoader(
             output_dataset,
@@ -167,21 +229,30 @@ class EvaluationHelperParallel:
 
         out = {}
         if rank == 0:
-            if(recalculate): 
+            if (recalculate):
                 print("Calculate FAD score from scratch")
-            fad_score = self.frechet.score(generate_files_path, groundtruth_path, limit_num=limit_num, recalculate=recalculate)
+            fad_score = self.frechet.score(
+                generate_files_path,
+                groundtruth_path,
+                limit_num=limit_num,
+                recalculate=recalculate
+            )
             out.update(fad_score)
             print("FAD: %s" % fad_score)
-            
+
         cache_path = generate_files_path + "classifier_logits_feature_cache.pkl"
         if os.path.exists(cache_path) and not recalculate:
             print("reload", cache_path)
             all_featuresdict_1 = load_pickle(cache_path)
         else:
             print(f"Extracting features from {generate_files_path}.")
-            featuresdict_1, metadict_1 = self.get_featuresdict(rank, outputloader)
-            all_featuresdict_1 = self.gather_features(featuresdict_1, metadict_1)
-            if rank == 0: 
+            featuresdict_1, metadict_1 = self.get_featuresdict(
+                rank, outputloader
+            )
+            all_featuresdict_1 = self.gather_features(
+                featuresdict_1, metadict_1
+            )
+            if rank == 0:
                 save_pickle(all_featuresdict_1, cache_path)
 
         cache_path = groundtruth_path + "classifier_logits_feature_cache.pkl"
@@ -190,9 +261,13 @@ class EvaluationHelperParallel:
             all_featuresdict_2 = load_pickle(cache_path)
         else:
             print(f"Extracting features from {groundtruth_path}.")
-            featuresdict_2, metadict_2 = self.get_featuresdict(rank, resultloader)
-            all_featuresdict_2 = self.gather_features(featuresdict_2, metadict_2)
-            if rank == 0:  
+            featuresdict_2, metadict_2 = self.get_featuresdict(
+                rank, resultloader
+            )
+            all_featuresdict_2 = self.gather_features(
+                featuresdict_2, metadict_2
+            )
+            if rank == 0:
                 save_pickle(all_featuresdict_2, cache_path)
 
         if rank == 0:
@@ -202,18 +277,31 @@ class EvaluationHelperParallel:
             for k, v in all_featuresdict_2.items():
                 if isinstance(v, torch.Tensor):
                     all_featuresdict_2[k] = v.cpu()
-                
-            metric_kl, _, _ = calculate_kl(all_featuresdict_1, all_featuresdict_2, "logits", same_name)
+
+            metric_kl, _, _ = calculate_kl(
+                all_featuresdict_1, all_featuresdict_2, "logits", same_name
+            )
             out.update(metric_kl)
 
-            metric_isc = calculate_isc(all_featuresdict_1, feat_layer_name="logits", splits=10, samples_shuffle=True, rng_seed=2020)
+            metric_isc = calculate_isc(
+                all_featuresdict_1,
+                feat_layer_name="logits",
+                splits=10,
+                samples_shuffle=True,
+                rng_seed=2020
+            )
             out.update(metric_isc)
 
-            if "2048" in all_featuresdict_1.keys() and "2048" in all_featuresdict_2.keys():
-                metric_fid = calculate_fid(all_featuresdict_1, all_featuresdict_2, feat_layer_name="2048")
+            if "2048" in all_featuresdict_1.keys(
+            ) and "2048" in all_featuresdict_2.keys():
+                metric_fid = calculate_fid(
+                    all_featuresdict_1,
+                    all_featuresdict_2,
+                    feat_layer_name="2048"
+                )
                 out.update(metric_fid)
-                
-            if(calculate_psnr_ssim or calculate_lsd):
+
+            if (calculate_psnr_ssim or calculate_lsd):
                 pairedloader = DataLoader(
                     MelPairedDataset(
                         generate_files_path,
@@ -228,18 +316,22 @@ class EvaluationHelperParallel:
                     sampler=None,
                     num_workers=16,
                 )
-                
-            if(calculate_lsd):
-                metric_lsd = self.calculate_lsd(pairedloader, same_name=same_name)
+
+            if (calculate_lsd):
+                metric_lsd = self.calculate_lsd(
+                    pairedloader, same_name=same_name
+                )
                 out.update(metric_lsd)
 
-            if(calculate_psnr_ssim):
-                metric_psnr_ssim = self.calculate_psnr_ssim(pairedloader, same_name=same_name)
+            if (calculate_psnr_ssim):
+                metric_psnr_ssim = self.calculate_psnr_ssim(
+                    pairedloader, same_name=same_name
+                )
                 out.update(metric_psnr_ssim)
 
         dist.barrier()
         return out
-    
+
     def file_init_check(self, dir):
         assert os.path.exists(dir), "The path does not exist %s" % dir
         assert len(os.listdir(dir)) > 1, "There is no files in %s" % dir
@@ -261,8 +353,8 @@ class EvaluationHelperParallel:
 
         intersect_keys = keyset1.intersection(keyset2)
         if (
-            len(intersect_keys) / len(keyset1) > threshold
-            and len(intersect_keys) / len(keyset2) > threshold
+            len(intersect_keys) / len(keyset1) > threshold and
+            len(intersect_keys) / len(keyset2) > threshold
         ):
             print(
                 "+Two path have %s intersection files out of total %s & %s files. Processing two folder with same_name=True"
@@ -277,7 +369,7 @@ class EvaluationHelperParallel:
             return False
 
     def calculate_lsd(self, pairedloader, same_name=True, time_offset=160 * 7):
-        if same_name == False:
+        if same_name is False:
             return {
                 "lsd": -1,
                 "ssim_stft": -1,
@@ -312,9 +404,9 @@ class EvaluationHelperParallel:
     def lsd(self, audio1, audio2):
         result = self.lsd_metric.evaluation(audio1, audio2, None)
         return result
-    
+
     def calculate_psnr_ssim(self, pairedloader, same_name=True):
-        if same_name == False:
+        if same_name is False:
             return {"psnr": -1, "ssim": -1}
         psnr_avg = []
         ssim_avg = []
@@ -326,15 +418,16 @@ class EvaluationHelperParallel:
                 print("Infinite value encountered in psnr %s " % filename)
                 continue
             psnr_avg.append(psnrval)
-            data_range = max(np.max(mel_gen), np.max(mel_target)) - min(np.min(mel_gen), np.min(mel_target))
+            data_range = max(np.max(mel_gen), np.max(mel_target)
+                            ) - min(np.min(mel_gen), np.min(mel_target))
             ssim_avg.append(ssim(mel_gen, mel_target, data_range=data_range))
         return {"psnr": np.mean(psnr_avg), "ssim": np.mean(ssim_avg)}
-    
+
     def get_current_time(self):
         now = datetime.datetime.now()
         return now.strftime("%Y-%m-%d-%H:%M:%S")
-    
+
     def sample_from(self, samples, number_to_use):
         assert samples.shape[0] >= number_to_use
         rand_order = np.random.permutation(samples.shape[0])
-        return samples[rand_order[: samples.shape[0]], :]
+        return samples[rand_order[:samples.shape[0]], :]

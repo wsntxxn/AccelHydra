@@ -1,10 +1,10 @@
-from typing import Any
-import math
 import copy
 import inspect
+import math
+from typing import Any
 
-from torch.utils.data import DataLoader
 from hydra.utils import get_method
+from torch.utils.data import DataLoader
 
 
 def get_warmup_steps(
@@ -50,13 +50,13 @@ def get_total_training_steps(
     Otherwise, the function will determine the epoch length from `train_dataloader`.
 
     Args:
-        train_dataloader: 
+        train_dataloader:
             Training dataloader object.
-        epochs: 
+        epochs:
             The total number of epochs to run.
-        num_processes: 
+        num_processes:
             The number of parallel processes used for distributed training.
-        epoch_length: 
+        epoch_length:
             A fixed number of training steps for each epoch. Defaults to None.
 
     Returns:
@@ -103,7 +103,7 @@ def get_steps_inside_accelerator_from_outside_steps(
     gradient_accumulation_steps: int, num_processes: int
 ):
     """
-    Convert "outside" steps (as observed in wandb logger or similar context) 
+    Convert "outside" steps (as observed in wandb logger or similar context)
     to the corresponding number of "inside" steps (for accelerate lr scheduler).
 
     Specifically, accelerate lr scheduler call `step()` `num_processes` times for
@@ -124,7 +124,7 @@ def get_steps_inside_accelerator_from_outside_steps(
             The number of parallel processes (GPUs) used in distributed training.
 
     Returns:
-        int: The total number of `lr_scheduler.step()` calls inside accelerate that 
+        int: The total number of `lr_scheduler.step()` calls inside accelerate that
         correspond to the given `outside_steps`.
     """
     num_dataloader_epochs_passed = outside_steps // dataloader_one_pass_outside_steps

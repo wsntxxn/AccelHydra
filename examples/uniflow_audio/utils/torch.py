@@ -4,8 +4,8 @@ from accel_hydra.utils.torch import create_mask_from_length
 
 
 def convert_pad_shape(pad_shape: list[list[int]]):
-    l = pad_shape[::-1]
-    pad_shape = [item for sublist in l for item in sublist]
+    reversed_shape = pad_shape[::-1]
+    pad_shape = [item for sublist in reversed_shape for item in sublist]
     return pad_shape
 
 

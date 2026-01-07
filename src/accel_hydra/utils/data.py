@@ -9,7 +9,7 @@ def init_dataloader_from_config(config: dict):
 
     Args:
         config: A dictionary or DictConfig containing the dataloader configuration.
-    
+
     Returns:
         instantiated dataloader object.
 

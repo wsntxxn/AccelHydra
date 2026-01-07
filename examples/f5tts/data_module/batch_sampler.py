@@ -1,6 +1,6 @@
-from torch.utils.data import Sampler, BatchSampler, Dataset
-from tqdm import trange
 import torch
+from torch.utils.data import BatchSampler, Dataset
+from tqdm import trange
 
 
 class DataSourceGetLengthMixin(Dataset):
@@ -10,12 +10,12 @@ class DataSourceGetLengthMixin(Dataset):
 
 class DynamicBatchSampler(BatchSampler):
     """Base class for dynamic batching based on frame length threshold.
-    
+
     Creates batches dynamically to ensure total frames per batch does not exceed
     the threshold, improving padding efficiency.
 
     Args:
-        data_source (Dataset): The dataset to sample from. 
+        data_source (Dataset): The dataset to sample from.
             Must implement a `get_length(idx)` method returning the length of a data point.
         batch_length_threshold (int): The maximum total length per batch.
         max_samples (int, optional): The maximum number of samples per batch, 0 means no limit. Default is 0.
@@ -90,7 +90,7 @@ class DynamicBatchSampler(BatchSampler):
 
 class SortedDynamicBatchSampler(DynamicBatchSampler):
     """Dynamic batch sampler with length-based sorting.
-    
+
     First sorts samples by frame length, then creates dynamic batches.
     This improves padding efficiency by grouping similar-length samples together.
     """

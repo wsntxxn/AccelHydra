@@ -1,23 +1,22 @@
 from pathlib import Path
 
+import diffusers.schedulers as noise_schedulers
+import hydra
 import soundfile as sf
 import torch
-import hydra
 from accelerate import Accelerator
-
 from omegaconf import OmegaConf
 from safetensors.torch import load_file
-import diffusers.schedulers as noise_schedulers
 from tqdm import tqdm
+from utils.general import sanitize_filename
 
-from uniflow_audio.utils.config import register_omegaconf_resolvers
-from uniflow_audio.models.common import LoadPretrainedBase
-from uniflow_audio.utils.general import sanitize_filename
+from accel_hydra.models import LoadPretrainedBase
+from accel_hydra.utils.config import register_omegaconf_resolvers
 
 try:
-    import torch_npu
-    from torch_npu.contrib import transfer_to_npu
-except:
+    import torch_npu  # noqa: F401
+    from torch_npu.contrib import transfer_to_npu  # noqa: F401
+except Exception:
     pass
 
 register_omegaconf_resolvers()
@@ -106,7 +105,8 @@ def main():
             for name, wave, task in zip(
                 batch["item_name"], waveform, batch["task"]
             ):
-                (audio_output_dir / task / cfg / step).mkdir(parents=True, exist_ok=True)
+                (audio_output_dir / task / cfg /
+                 step).mkdir(parents=True, exist_ok=True)
                 safe_name = sanitize_filename(name)
                 sf.write(
                     audio_output_dir / task / cfg / step / f"{safe_name}.wav",

@@ -4,11 +4,11 @@ from torch.utils.checkpoint import checkpoint
 
 from .mask_dit import DiTBlock, FinalBlock, UDiT
 from .modules import (
-    film_modulate,
     PatchEmbed,
     PE_wrapper,
-    TimestepEmbedder,
     RMSNorm,
+    TimestepEmbedder,
+    film_modulate,
 )
 
 

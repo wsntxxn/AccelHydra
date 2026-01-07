@@ -57,4 +57,3 @@ trainer:
     _target_: accel_hydra.MetricMonitor
     metric_name: accuracy
     mode: max
-

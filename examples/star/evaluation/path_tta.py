@@ -19,29 +19,25 @@ import torch
 
 torch.multiprocessing.set_sharing_strategy('file_system')
 import argparse
+import sys
 from collections import defaultdict
-
-import os
-import numpy as np
-import librosa
-from pathlib import Path
-from tqdm import tqdm
-from copy import deepcopy
-
-# Ref: https://github.com/haoheliu/audioldm_eval/tree/main
-# This script uses a locally modified version of audioldm_eval.
-from audioldm_eval import EvaluationHelper
 
 # Ref: https://github.com/LAION-AI/CLAP
 # The ref command for installing: pip install laion-clap
 import laion_clap
-import sys
+import librosa
+import numpy as np
+
+# Ref: https://github.com/haoheliu/audioldm_eval/tree/main
+# This script uses a locally modified version of audioldm_eval.
+from audioldm_eval import EvaluationHelper
+from tqdm import tqdm
+
 sys.path.append("/hpc_stor03/sjtu_home/yixuan.li/work/x_to_audio_generation")
-from utils.general import read_jsonl_to_mapping, audio_dir_to_mapping
-from laion_clap.clap_module.factory import load_state_dict as clap_load_state_dict
-import os
-import shutil
-from pathlib import Path
+from laion_clap.clap_module.factory import (
+    load_state_dict as clap_load_state_dict,
+)
+from utils.general import audio_dir_to_mapping, read_jsonl_to_mapping
 
 
 def compute_clap_metrics(batch: dict, model: laion_clap.CLAP_Module):
@@ -71,9 +67,9 @@ class AudioTextDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         audio_id = self.audio_ids[index]
         caption = self.ref_aid_to_captions[audio_id]
-        
+
         gen_audio = self.gen_aid_to_audios[audio_id]
-       
+
         waveform, _ = librosa.load(gen_audio, sr=48000)
         return {
             "audio_id": audio_id,
@@ -96,7 +92,7 @@ def evaluate(args):
 
     """Calculate ldm eval score: FAD, FD, KL score"""
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
-    backbone = "cnn14" 
+    backbone = "cnn14"
     print("load evaluator >>>")
     evaluator = EvaluationHelper(16000, args.device, backbone=backbone)
     print("load evaluator finish <<<")
@@ -130,7 +126,7 @@ def evaluate(args):
     clap_model_path = "/mnt/cloudstorfs/sjtu_home/zeyu.xie/workspace/Tools/miniconda3/envs/py3.10.11/lib/python3.10/site-packages/laion_clap/630k-audioset-best.pt"
     assert clap_model_path is not None, "CLAP_MODEL_PATH environment variable not set."
     #clap_scorer.load_ckpt(ckpt=clap_model_path, verbose=False)
-    
+
     ckpt = clap_load_state_dict(clap_model_path, skip_params=True)
     del_parameter_key = ["text_branch.embeddings.position_ids"]
     ckpt = {"model."+k:v for k, v in ckpt.items() if k not in del_parameter_key}

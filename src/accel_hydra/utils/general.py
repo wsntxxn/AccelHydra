@@ -1,7 +1,7 @@
 import json
-from typing import Union, Dict
-from pathlib import Path
 import os
+from pathlib import Path
+from typing import Dict, Union
 
 from omegaconf import OmegaConf
 

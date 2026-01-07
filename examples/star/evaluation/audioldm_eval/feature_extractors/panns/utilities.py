@@ -1,9 +1,10 @@
-import os
+import datetime
 import logging
+import os
+import pickle
+
 import numpy as np
 from scipy import stats
-import datetime
-import pickle
 
 
 def create_folder(fd):

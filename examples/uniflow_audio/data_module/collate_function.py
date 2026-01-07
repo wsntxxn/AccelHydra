@@ -1,7 +1,10 @@
-from typing import Any
 from dataclasses import dataclass, field
 
-from accel_hydra.data.collate_function import PaddingCollate
+import numpy as np
+import torch
+import torch.nn as nn
+
+from accel_hydra.data_module.collate_function import PaddingCollate
 
 
 @dataclass

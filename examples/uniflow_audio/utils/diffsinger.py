@@ -1,14 +1,14 @@
-import six
-from pathlib import Path
-import re
 import json
+import re
 from collections import OrderedDict
+from pathlib import Path
 from typing import Union
 
-from pypinyin import pinyin, lazy_pinyin, Style
-import numpy as np
 import librosa
+import numpy as np
+import six
 import torch
+from pypinyin import lazy_pinyin
 
 PAD = "<pad>"
 EOS = "<EOS>"
@@ -137,7 +137,6 @@ def get_pitch(
     latent_length = wav.shape[0] // hop_size
     f0_min = 80
     f0_max = 750
-    pad_size = 4
 
     f0 = parselmouth.Sound(wav, sample_rate).to_pitch_ac(
         time_step=frame_shift,

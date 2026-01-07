@@ -1,15 +1,17 @@
+# ruff: noqa: F841
+
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchlibrosa.stft import Spectrogram, LogmelFilterBank
-from torchlibrosa.augmentation import SpecAugmentation
-import os
-
 from audioldm_eval.feature_extractors.panns.pytorch_utils import (
     do_mixup,
     interpolate,
     pad_framewise_output,
 )
+from torchlibrosa.augmentation import SpecAugmentation
+from torchlibrosa.stft import LogmelFilterBank, Spectrogram
 
 
 def init_layer(layer):
@@ -233,21 +235,40 @@ class Cnn14(nn.Module):
         self.fc1 = nn.Linear(2048, 2048, bias=True)
         self.fc_audioset = nn.Linear(2048, classes_num, bias=True)
         home_dir = os.path.expanduser("~")
-        #if not os.path.exists("%s/.cache/audioldm_eval/ckpt/Cnn14_mAP=0.431.pth" % (home_dir)):    
-        if not os.path.exists("/hpc_stor03/sjtu_home/zeyu.xie/.cache/panns/Cnn14_16k_mAP=0.438.pth"):
+        #if not os.path.exists("%s/.cache/audioldm_eval/ckpt/Cnn14_mAP=0.431.pth" % (home_dir)):
+        if not os.path.exists(
+            "/hpc_stor03/sjtu_home/zeyu.xie/.cache/panns/Cnn14_16k_mAP=0.438.pth"
+        ):
 
             print("Download pretrained checkpoints of Cnn14.")
-            os.makedirs("%s/.cache/audioldm_eval/ckpt" % (home_dir), exist_ok=True)
-            os.system("wget -P %s/.cache/audioldm_eval/ckpt/ %s" % (home_dir,"https://zenodo.org/record/3576403/files/Cnn14_mAP%3D0.431.pth"))
-            os.system("wget -P %s/.cache/audioldm_eval/ckpt/ %s" % (home_dir,"https://zenodo.org/record/3987831/files/Cnn14_16k_mAP%3D0.438.pth"))
+            os.makedirs(
+                "%s/.cache/audioldm_eval/ckpt" % (home_dir), exist_ok=True
+            )
+            os.system(
+                "wget -P %s/.cache/audioldm_eval/ckpt/ %s" % (
+                    home_dir,
+                    "https://zenodo.org/record/3576403/files/Cnn14_mAP%3D0.431.pth"
+                )
+            )
+            os.system(
+                "wget -P %s/.cache/audioldm_eval/ckpt/ %s" % (
+                    home_dir,
+                    "https://zenodo.org/record/3987831/files/Cnn14_16k_mAP%3D0.438.pth"
+                )
+            )
 
         # self.init_weight()
         if sample_rate == 16000:
             #state_dict = torch.load("%s/.cache/audioldm_eval/ckpt/Cnn14_16k_mAP=0.438.pth" % home_dir,weights_only=False)
-            state_dict = torch.load("/hpc_stor03/sjtu_home/zeyu.xie/.cache/panns/Cnn14_16k_mAP=0.438.pth", weights_only=False)
+            state_dict = torch.load(
+                "/hpc_stor03/sjtu_home/zeyu.xie/.cache/panns/Cnn14_16k_mAP=0.438.pth",
+                weights_only=False
+            )
             self.load_state_dict(state_dict["model"])
         elif sample_rate == 32000:
-            state_dict = torch.load("%s/.cache/audioldm_eval/ckpt/Cnn14_mAP=0.431.pth" % home_dir)
+            state_dict = torch.load(
+                "%s/.cache/audioldm_eval/ckpt/Cnn14_mAP=0.431.pth" % home_dir
+            )
             self.load_state_dict(state_dict["model"])
 
     def init_weight(self):
@@ -268,7 +289,9 @@ class Cnn14(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -323,7 +346,8 @@ class Cnn14(nn.Module):
 
 class Cnn14_no_specaug(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn14_no_specaug, self).__init__()
@@ -382,7 +406,9 @@ class Cnn14_no_specaug(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -415,14 +441,18 @@ class Cnn14_no_specaug(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Cnn14_no_dropout(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn14_no_dropout, self).__init__()
@@ -489,7 +519,9 @@ class Cnn14_no_dropout(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -519,14 +551,18 @@ class Cnn14_no_dropout(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Cnn6(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn6, self).__init__()
@@ -591,7 +627,9 @@ class Cnn6(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -623,14 +661,18 @@ class Cnn6(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Cnn10(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn10, self).__init__()
@@ -695,7 +737,9 @@ class Cnn10(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -727,7 +771,10 @@ class Cnn10(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
@@ -748,7 +795,9 @@ def _resnet_conv3x3(in_planes, out_planes):
 
 def _resnet_conv1x1(in_planes, out_planes):
     # 1x1 convolution
-    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=1, bias=False)
+    return nn.Conv2d(
+        in_planes, out_planes, kernel_size=1, stride=1, bias=False
+    )
 
 
 class _ResnetBasicBlock(nn.Module):
@@ -773,7 +822,9 @@ class _ResnetBasicBlock(nn.Module):
                 "_ResnetBasicBlock only supports groups=1 and base_width=64"
             )
         if dilation > 1:
-            raise NotImplementedError("Dilation > 1 not supported in _ResnetBasicBlock")
+            raise NotImplementedError(
+                "Dilation > 1 not supported in _ResnetBasicBlock"
+            )
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
 
         self.stride = stride
@@ -914,20 +965,33 @@ class _ResNet(nn.Module):
         if len(replace_stride_with_dilation) != 3:
             raise ValueError(
                 "replace_stride_with_dilation should be None "
-                "or a 3-element tuple, got {}".format(replace_stride_with_dilation)
+                "or a 3-element tuple, got {}".
+                format(replace_stride_with_dilation)
             )
         self.groups = groups
         self.base_width = width_per_group
 
         self.layer1 = self._make_layer(block, 64, layers[0], stride=1)
         self.layer2 = self._make_layer(
-            block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0]
+            block,
+            128,
+            layers[1],
+            stride=2,
+            dilate=replace_stride_with_dilation[0]
         )
         self.layer3 = self._make_layer(
-            block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1]
+            block,
+            256,
+            layers[2],
+            stride=2,
+            dilate=replace_stride_with_dilation[1]
         )
         self.layer4 = self._make_layer(
-            block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2]
+            block,
+            512,
+            layers[3],
+            stride=2,
+            dilate=replace_stride_with_dilation[2]
         )
 
     def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
@@ -993,7 +1057,8 @@ class _ResNet(nn.Module):
 
 class ResNet22(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(ResNet22, self).__init__()
@@ -1043,7 +1108,9 @@ class ResNet22(nn.Module):
         # self.conv_block2 = ConvBlock(in_channels=64, out_channels=64)
 
         self.resnet = _ResNet(
-            block=_ResnetBasicBlock, layers=[2, 2, 2, 2], zero_init_residual=True
+            block=_ResnetBasicBlock,
+            layers=[2, 2, 2, 2],
+            zero_init_residual=True
         )
 
         self.conv_block_after1 = ConvBlock(in_channels=512, out_channels=2048)
@@ -1062,7 +1129,9 @@ class ResNet22(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -1093,14 +1162,18 @@ class ResNet22(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class ResNet38(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(ResNet38, self).__init__()
@@ -1150,7 +1223,9 @@ class ResNet38(nn.Module):
         # self.conv_block2 = ConvBlock(in_channels=64, out_channels=64)
 
         self.resnet = _ResNet(
-            block=_ResnetBasicBlock, layers=[3, 4, 6, 3], zero_init_residual=True
+            block=_ResnetBasicBlock,
+            layers=[3, 4, 6, 3],
+            zero_init_residual=True
         )
 
         self.conv_block_after1 = ConvBlock(in_channels=512, out_channels=2048)
@@ -1169,7 +1244,9 @@ class ResNet38(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -1200,14 +1277,18 @@ class ResNet38(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class ResNet54(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(ResNet54, self).__init__()
@@ -1257,7 +1338,9 @@ class ResNet54(nn.Module):
         # self.conv_block2 = ConvBlock(in_channels=64, out_channels=64)
 
         self.resnet = _ResNet(
-            block=_ResnetBottleneck, layers=[3, 4, 6, 3], zero_init_residual=True
+            block=_ResnetBottleneck,
+            layers=[3, 4, 6, 3],
+            zero_init_residual=True
         )
 
         self.conv_block_after1 = ConvBlock(in_channels=2048, out_channels=2048)
@@ -1276,7 +1359,9 @@ class ResNet54(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -1307,14 +1392,18 @@ class ResNet54(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Cnn14_emb512(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn14_emb512, self).__init__()
@@ -1381,7 +1470,9 @@ class Cnn14_emb512(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -1417,14 +1508,18 @@ class Cnn14_emb512(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Cnn14_emb128(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn14_emb128, self).__init__()
@@ -1491,7 +1586,9 @@ class Cnn14_emb128(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -1527,14 +1624,18 @@ class Cnn14_emb128(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Cnn14_emb32(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn14_emb32, self).__init__()
@@ -1601,7 +1702,9 @@ class Cnn14_emb32(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -1637,14 +1740,18 @@ class Cnn14_emb32(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class MobileNetV1(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(MobileNetV1, self).__init__()
@@ -1750,7 +1857,9 @@ class MobileNetV1(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -1775,7 +1884,10 @@ class MobileNetV1(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
@@ -1792,7 +1904,13 @@ class InvertedResidual(nn.Module):
         if expand_ratio == 1:
             _layers = [
                 nn.Conv2d(
-                    hidden_dim, hidden_dim, 3, 1, 1, groups=hidden_dim, bias=False
+                    hidden_dim,
+                    hidden_dim,
+                    3,
+                    1,
+                    1,
+                    groups=hidden_dim,
+                    bias=False
                 ),
                 nn.AvgPool2d(stride),
                 nn.BatchNorm2d(hidden_dim),
@@ -1812,7 +1930,13 @@ class InvertedResidual(nn.Module):
                 nn.BatchNorm2d(hidden_dim),
                 nn.ReLU6(inplace=True),
                 nn.Conv2d(
-                    hidden_dim, hidden_dim, 3, 1, 1, groups=hidden_dim, bias=False
+                    hidden_dim,
+                    hidden_dim,
+                    3,
+                    1,
+                    1,
+                    groups=hidden_dim,
+                    bias=False
                 ),
                 nn.AvgPool2d(stride),
                 nn.BatchNorm2d(hidden_dim),
@@ -1838,7 +1962,8 @@ class InvertedResidual(nn.Module):
 
 class MobileNetV2(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(MobileNetV2, self).__init__()
@@ -1924,7 +2049,8 @@ class MobileNetV2(nn.Module):
         # building first layer
         input_channel = int(input_channel * width_mult)
         self.last_channel = (
-            int(last_channel * width_mult) if width_mult > 1.0 else last_channel
+            int(last_channel *
+                width_mult) if width_mult > 1.0 else last_channel
         )
         self.features = [conv_bn(1, input_channel, 2)]
         # building inverted residual blocks
@@ -1933,11 +2059,15 @@ class MobileNetV2(nn.Module):
             for i in range(n):
                 if i == 0:
                     self.features.append(
-                        block(input_channel, output_channel, s, expand_ratio=t)
+                        block(
+                            input_channel, output_channel, s, expand_ratio=t
+                        )
                     )
                 else:
                     self.features.append(
-                        block(input_channel, output_channel, 1, expand_ratio=t)
+                        block(
+                            input_channel, output_channel, 1, expand_ratio=t
+                        )
                     )
                 input_channel = output_channel
         # building last several layers
@@ -1959,7 +2089,9 @@ class MobileNetV2(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -1985,7 +2117,10 @@ class MobileNetV2(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
@@ -2021,7 +2156,8 @@ class LeeNetConvBlock(nn.Module):
 
 class LeeNet11(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(LeeNet11, self).__init__()
@@ -2080,7 +2216,10 @@ class LeeNet11(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
@@ -2129,7 +2268,8 @@ class LeeNetConvBlock2(nn.Module):
 
 class LeeNet24(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(LeeNet24, self).__init__()
@@ -2196,7 +2336,10 @@ class LeeNet24(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
@@ -2289,7 +2432,8 @@ class DaiNetResBlock(nn.Module):
 
 class DaiNet19(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(DaiNet19, self).__init__()
@@ -2353,7 +2497,10 @@ class DaiNet19(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
@@ -2374,7 +2521,9 @@ def _resnet_conv3x1_wav1d(in_planes, out_planes, dilation):
 
 def _resnet_conv1x1_wav1d(in_planes, out_planes):
     # 1x1 convolution
-    return nn.Conv1d(in_planes, out_planes, kernel_size=1, stride=1, bias=False)
+    return nn.Conv1d(
+        in_planes, out_planes, kernel_size=1, stride=1, bias=False
+    )
 
 
 class _ResnetBasicBlockWav1d(nn.Module):
@@ -2399,7 +2548,9 @@ class _ResnetBasicBlockWav1d(nn.Module):
                 "_ResnetBasicBlock only supports groups=1 and base_width=64"
             )
         if dilation > 1:
-            raise NotImplementedError("Dilation > 1 not supported in _ResnetBasicBlock")
+            raise NotImplementedError(
+                "Dilation > 1 not supported in _ResnetBasicBlock"
+            )
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
 
         self.stride = stride
@@ -2472,7 +2623,8 @@ class _ResNetWav1d(nn.Module):
         if len(replace_stride_with_dilation) != 3:
             raise ValueError(
                 "replace_stride_with_dilation should be None "
-                "or a 3-element tuple, got {}".format(replace_stride_with_dilation)
+                "or a 3-element tuple, got {}".
+                format(replace_stride_with_dilation)
             )
         self.groups = groups
         self.base_width = width_per_group
@@ -2495,7 +2647,9 @@ class _ResNetWav1d(nn.Module):
         if stride != 1 or self.inplanes != planes * block.expansion:
             if stride == 1:
                 downsample = nn.Sequential(
-                    _resnet_conv1x1_wav1d(self.inplanes, planes * block.expansion),
+                    _resnet_conv1x1_wav1d(
+                        self.inplanes, planes * block.expansion
+                    ),
                     norm_layer(planes * block.expansion),
                 )
                 init_layer(downsample[0])
@@ -2503,7 +2657,9 @@ class _ResNetWav1d(nn.Module):
             else:
                 downsample = nn.Sequential(
                     nn.AvgPool1d(kernel_size=stride),
-                    _resnet_conv1x1_wav1d(self.inplanes, planes * block.expansion),
+                    _resnet_conv1x1_wav1d(
+                        self.inplanes, planes * block.expansion
+                    ),
                     norm_layer(planes * block.expansion),
                 )
                 init_layer(downsample[1])
@@ -2552,7 +2708,8 @@ class _ResNetWav1d(nn.Module):
 
 class Res1dNet31(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Res1dNet31, self).__init__()
@@ -2574,7 +2731,9 @@ class Res1dNet31(nn.Module):
         )
         self.bn0 = nn.BatchNorm1d(64)
 
-        self.resnet = _ResNetWav1d(_ResnetBasicBlockWav1d, [2, 2, 2, 2, 2, 2, 2])
+        self.resnet = _ResNetWav1d(
+            _ResnetBasicBlockWav1d, [2, 2, 2, 2, 2, 2, 2]
+        )
 
         self.fc1 = nn.Linear(2048, 2048, bias=True)
         self.fc_audioset = nn.Linear(2048, classes_num, bias=True)
@@ -2608,14 +2767,18 @@ class Res1dNet31(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Res1dNet51(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Res1dNet51, self).__init__()
@@ -2637,7 +2800,9 @@ class Res1dNet51(nn.Module):
         )
         self.bn0 = nn.BatchNorm1d(64)
 
-        self.resnet = _ResNetWav1d(_ResnetBasicBlockWav1d, [2, 3, 4, 6, 4, 3, 2])
+        self.resnet = _ResNetWav1d(
+            _ResnetBasicBlockWav1d, [2, 3, 4, 6, 4, 3, 2]
+        )
 
         self.fc1 = nn.Linear(2048, 2048, bias=True)
         self.fc_audioset = nn.Linear(2048, classes_num, bias=True)
@@ -2671,7 +2836,10 @@ class Res1dNet51(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
@@ -2723,7 +2891,8 @@ class ConvPreWavBlock(nn.Module):
 
 class Wavegram_Cnn14(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Wavegram_Cnn14, self).__init__()
@@ -2816,14 +2985,18 @@ class Wavegram_Cnn14(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Wavegram_Logmel_Cnn14(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Wavegram_Logmel_Cnn14, self).__init__()
@@ -2915,7 +3088,9 @@ class Wavegram_Logmel_Cnn14(nn.Module):
         a1 = self.pre_block4(a1, pool_size=(2, 1))
 
         # Log mel spectrogram
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -2956,14 +3131,18 @@ class Wavegram_Logmel_Cnn14(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Wavegram_Logmel128_Cnn14(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Wavegram_Logmel128_Cnn14, self).__init__()
@@ -3055,7 +3234,9 @@ class Wavegram_Logmel128_Cnn14(nn.Module):
         a1 = self.pre_block4(a1, pool_size=(2, 1))
 
         # Log mel spectrogram
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -3096,14 +3277,18 @@ class Wavegram_Logmel128_Cnn14(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Cnn14_16k(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn14_16k, self).__init__()
@@ -3168,18 +3353,35 @@ class Cnn14_16k(nn.Module):
 
         # self.init_weight()
         home_dir = os.path.expanduser("~")
-        if not os.path.exist("%s/.cache/audioldm_eval/ckpt/Cnn14_mAP=0.431.pth" % home_dir):
+        if not os.path.exist(
+            "%s/.cache/audioldm_eval/ckpt/Cnn14_mAP=0.431.pth" % home_dir
+        ):
             print("Download pretrained checkpoints of Cnn14.")
             os.makedirs("ckpt", exist_ok=True)
-            os.system("wget -P %s/.cache/audioldm_eval/ckpt/ %s" % (home_dir,"https://zenodo.org/record/3576403/files/Cnn14_mAP%3D0.431.pth"))
-            os.system("wget -P %s/.cache/audioldm_eval/ckpt/ %s" % (home_dir,"https://zenodo.org/record/3987831/files/Cnn14_16k_mAP%3D0.438.pth"))
+            os.system(
+                "wget -P %s/.cache/audioldm_eval/ckpt/ %s" % (
+                    home_dir,
+                    "https://zenodo.org/record/3576403/files/Cnn14_mAP%3D0.431.pth"
+                )
+            )
+            os.system(
+                "wget -P %s/.cache/audioldm_eval/ckpt/ %s" % (
+                    home_dir,
+                    "https://zenodo.org/record/3987831/files/Cnn14_16k_mAP%3D0.438.pth"
+                )
+            )
 
         # self.init_weight()
         if sample_rate == 16000:
-            state_dict = torch.load("%s/.cache/audioldm_eval/ckpt/Cnn14_16k_mAP=0.438.pth" % home_dir)
+            state_dict = torch.load(
+                "%s/.cache/audioldm_eval/ckpt/Cnn14_16k_mAP=0.438.pth" %
+                home_dir
+            )
             self.load_state_dict(state_dict["model"])
         elif sample_rate == 32000:
-            state_dict = torch.load("%s/.cache/audioldm_eval/ckpt/Cnn14_mAP=0.431.pth" % home_dir)
+            state_dict = torch.load(
+                "%s/.cache/audioldm_eval/ckpt/Cnn14_mAP=0.431.pth" % home_dir
+            )
             self.load_state_dict(state_dict["model"])
 
     def init_weight(self):
@@ -3191,7 +3393,9 @@ class Cnn14_16k(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -3227,14 +3431,18 @@ class Cnn14_16k(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Cnn14_8k(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn14_8k, self).__init__()
@@ -3308,7 +3516,9 @@ class Cnn14_8k(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -3344,14 +3554,18 @@ class Cnn14_8k(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Cnn14_mixup_time_domain(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn14_mixup_time_domain, self).__init__()
@@ -3424,7 +3638,9 @@ class Cnn14_mixup_time_domain(nn.Module):
         if self.training and mixup_lambda is not None:
             x = do_mixup(x, mixup_lambda)
 
-        x = self.spectrogram_extractor(x)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            x
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -3456,14 +3672,18 @@ class Cnn14_mixup_time_domain(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Cnn14_mel32(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn14_mel32, self).__init__()
@@ -3530,7 +3750,9 @@ class Cnn14_mel32(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -3566,14 +3788,18 @@ class Cnn14_mel32(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
 
 class Cnn14_mel128(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn14_mel128, self).__init__()
@@ -3640,7 +3866,9 @@ class Cnn14_mel128(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
@@ -3676,7 +3904,10 @@ class Cnn14_mel128(nn.Module):
         embedding = F.dropout(x, p=0.5, training=self.training)
         clipwise_output = torch.sigmoid(self.fc_audioset(x))
 
-        output_dict = {"clipwise_output": clipwise_output, "embedding": embedding}
+        output_dict = {
+            "clipwise_output": clipwise_output,
+            "embedding": embedding
+        }
 
         return output_dict
 
@@ -3684,7 +3915,8 @@ class Cnn14_mel128(nn.Module):
 ############
 class Cnn14_DecisionLevelMax(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn14_DecisionLevelMax, self).__init__()
@@ -3752,7 +3984,9 @@ class Cnn14_DecisionLevelMax(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         frames_num = x.shape[2]
@@ -3793,7 +4027,9 @@ class Cnn14_DecisionLevelMax(nn.Module):
         (clipwise_output, _) = torch.max(segmentwise_output, dim=1)
 
         # Get framewise output
-        framewise_output = interpolate(segmentwise_output, self.interpolate_ratio)
+        framewise_output = interpolate(
+            segmentwise_output, self.interpolate_ratio
+        )
         framewise_output = pad_framewise_output(framewise_output, frames_num)
 
         output_dict = {
@@ -3806,7 +4042,8 @@ class Cnn14_DecisionLevelMax(nn.Module):
 
 class Cnn14_DecisionLevelAvg(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn14_DecisionLevelAvg, self).__init__()
@@ -3874,7 +4111,9 @@ class Cnn14_DecisionLevelAvg(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         frames_num = x.shape[2]
@@ -3915,11 +4154,15 @@ class Cnn14_DecisionLevelAvg(nn.Module):
         clipwise_output = torch.mean(segmentwise_output, dim=1)
 
         # Get framewise output
-        framewise_output = interpolate(segmentwise_output, self.interpolate_ratio)
+        framewise_output = interpolate(
+            segmentwise_output, self.interpolate_ratio
+        )
         framewise_output = pad_framewise_output(framewise_output, frames_num)
 
         # Get framewise output
-        framewise_output = interpolate(segmentwise_output, self.interpolate_ratio)
+        framewise_output = interpolate(
+            segmentwise_output, self.interpolate_ratio
+        )
         framewise_output = pad_framewise_output(framewise_output, frames_num)
 
         output_dict = {
@@ -3932,7 +4175,8 @@ class Cnn14_DecisionLevelAvg(nn.Module):
 
 class Cnn14_DecisionLevelAtt(nn.Module):
     def __init__(
-        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num
+        self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax,
+        classes_num
     ):
 
         super(Cnn14_DecisionLevelAtt, self).__init__()
@@ -3999,7 +4243,9 @@ class Cnn14_DecisionLevelAtt(nn.Module):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)  # (batch_size, 1, time_steps, freq_bins)
+        x = self.spectrogram_extractor(
+            input
+        )  # (batch_size, 1, time_steps, freq_bins)
         x = self.logmel_extractor(x)  # (batch_size, 1, time_steps, mel_bins)
 
         frames_num = x.shape[2]
@@ -4041,7 +4287,9 @@ class Cnn14_DecisionLevelAtt(nn.Module):
         segmentwise_output = segmentwise_output.transpose(1, 2)
 
         # Get framewise output
-        framewise_output = interpolate(segmentwise_output, self.interpolate_ratio)
+        framewise_output = interpolate(
+            segmentwise_output, self.interpolate_ratio
+        )
         framewise_output = pad_framewise_output(framewise_output, frames_num)
 
         output_dict = {

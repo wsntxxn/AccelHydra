@@ -1,20 +1,21 @@
 import logging
 import math
+
 import torch
 import torch.nn as nn
 from torch.utils.checkpoint import checkpoint
 
+from .attention import Attention
 from .modules import (
-    film_modulate,
-    unpatchify,
+    FeedForward,
     PatchEmbed,
     PE_wrapper,
-    TimestepEmbedder,
-    FeedForward,
     RMSNorm,
+    TimestepEmbedder,
+    film_modulate,
+    unpatchify,
 )
 from .span_mask import compute_mask_indices
-from .attention import Attention
 
 logger = logging.Logger(__file__)
 

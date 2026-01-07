@@ -20,4 +20,3 @@ content_encoder:
   speech_encoder:
     _target_: models.content_encoder.star_encoder.star_encoder.QformerBridgeNet
     load_from_pretrained: /hpc_stor03/sjtu_home/zeyu.xie/workspace/speech2audio/hear/output/qformer_caption_tts_dac/exp0_best.pt
- 

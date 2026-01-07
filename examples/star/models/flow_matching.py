@@ -1,28 +1,32 @@
-from typing import Any, Optional, Union, List, Sequence
-
+import copy
 import inspect
 import random
+from typing import Any, List, Optional, Sequence, Union
 
-from tqdm import tqdm
 import numpy as np
-import copy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from diffusers.utils.torch_utils import randn_tensor
 from diffusers import FlowMatchEulerDiscreteScheduler
 from diffusers.training_utils import compute_density_for_timestep_sampling
-
+from diffusers.utils.torch_utils import randn_tensor
 from models.autoencoder.autoencoder_base import AutoEncoderBase
-from models.content_encoder.content_encoder import ContentEncoder
 from models.content_adapter import ContentAdapterBase
-from uniflow_audio.models.common import LoadPretrainedBase, CountParamsBase, SaveTrainableParamsBase
-from uniflow_audio.utils.torch_utilities import (
-    create_alignment_path, create_mask_from_length, loss_with_mask,
-    trim_or_pad_length
-)
+from models.content_encoder.content_encoder import ContentEncoder
 from safetensors.torch import load_file
+from tqdm import tqdm
+from uniflow_audio.models.common import (
+    CountParamsBase,
+    LoadPretrainedBase,
+    SaveTrainableParamsBase,
+)
+from uniflow_audio.utils.torch_utilities import (
+    create_alignment_path,
+    create_mask_from_length,
+    loss_with_mask,
+    trim_or_pad_length,
+)
+
 
 class FlowMatchingMixin:
     def __init__(
@@ -243,7 +247,7 @@ class SingleTaskCrossAttentionAudioFlowMatching(
             # missing, unexpected = self.load_state_dict(pretrained_state_dict, strict=False)
             # print("Missing keys:", missing)
             # print("Unexpected keys:", unexpected)
-        
+
         # if content_encoder.embed_dim != 1024:
         #     self.context_proj = nn.Sequential(
         #         nn.Linear(content_encoder.embed_dim, 1024),
@@ -257,7 +261,7 @@ class SingleTaskCrossAttentionAudioFlowMatching(
         self, content: list[Any], condition: list[Any], task: list[str],
         waveform: torch.Tensor, waveform_lengths: torch.Tensor, loss_reduce: bool = True, **kwargs
 
-    ):     
+    ):
         loss_reduce = self.training or (loss_reduce and not self.training)
         device = self.dummy_param.device
 
@@ -270,7 +274,7 @@ class SingleTaskCrossAttentionAudioFlowMatching(
         content_dict = self.encode_content(content, task, device)
         content, content_mask = content_dict["content"], content_dict[
             "content_mask"]
-        
+
         # content = self.context_proj(content)
 
         if self.training and self.classifier_free_guidance:
@@ -351,7 +355,7 @@ class SingleTaskCrossAttentionAudioFlowMatching(
         device = self.dummy_param.device
         classifier_free_guidance = guidance_scale > 1.0
         batch_size = len(content) * num_samples_per_content
-        
+
         if classifier_free_guidance:
             content, content_mask = self.encode_content_classifier_free(
                 content, task, device, num_samples_per_content
@@ -458,7 +462,7 @@ class MultiContentAudioFlowMatching(SingleTaskCrossAttentionAudioFlowMatching):
         num_train_steps: int = 1000,
         pretrained_ckpt: str | None = None,
         embed_dim: int = 1024,
-    ):       
+    ):
         super().__init__(
             autoencoder=autoencoder,
             content_encoder=content_encoder,
@@ -467,8 +471,8 @@ class MultiContentAudioFlowMatching(SingleTaskCrossAttentionAudioFlowMatching):
             sample_strategy=sample_strategy,
             num_train_steps=num_train_steps,
             pretrained_ckpt=pretrained_ckpt,
-        )       
-       
+        )
+
     def forward(
         self,
         content: list[Any],
@@ -492,7 +496,7 @@ class MultiContentAudioFlowMatching(SingleTaskCrossAttentionAudioFlowMatching):
         content_dict = self.encode_content(content, task, device)
         context, context_mask, length_aligned_content = content_dict["content"], content_dict[
             "content_mask"],  content_dict["length_aligned_content"]
-        
+
         # --------------------------------------------------------------------
         # prepare latent and noise
         # --------------------------------------------------------------------
@@ -505,7 +509,7 @@ class MultiContentAudioFlowMatching(SingleTaskCrossAttentionAudioFlowMatching):
         # prepare input to the backbone
         # --------------------------------------------------------------------
         # TODO compatility for 2D spectrogram VAE
-        
+
         latent_length = noisy_latent.size(self.autoencoder.time_dim)
         time_aligned_content = trim_or_pad_length(
             length_aligned_content, latent_length, 1
@@ -556,7 +560,7 @@ class MultiContentAudioFlowMatching(SingleTaskCrossAttentionAudioFlowMatching):
         classifier_free_guidance = guidance_scale > 1.0
         batch_size = len(content)
 
-        
+
         content_dict: dict[
             str, torch.Tensor] = self.encode_content(
                 content, task, device
@@ -564,7 +568,7 @@ class MultiContentAudioFlowMatching(SingleTaskCrossAttentionAudioFlowMatching):
         context, context_mask, length_aligned_content = \
             content_dict["content"], content_dict[
                 "content_mask"],  content_dict["length_aligned_content"]
-        
+
         shape = (batch_size, *latent_shape)
         latent_length = shape[self.autoencoder.time_dim]
         time_aligned_content = trim_or_pad_length(
@@ -585,8 +589,8 @@ class MultiContentAudioFlowMatching(SingleTaskCrossAttentionAudioFlowMatching):
             ])
             context = torch.cat([uncond_context, context])
             context_mask = torch.cat([uncond_context_mask, context_mask])
-  
-        
+
+
         latent = randn_tensor(
             shape, generator=None, device=device, dtype=context.dtype
         )
@@ -676,7 +680,7 @@ class DurationAdapterMixin:
     ):
         """
         global_pred: predicted duration value, processed by logarithmic and offset
-        local_pred: predicted latent length 
+        local_pred: predicted latent length
         """
         global_pred = torch.exp(global_pred) - self.offset
         result = global_pred

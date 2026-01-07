@@ -1,21 +1,21 @@
-import os
-from audioldm_eval.datasets.load_mel import load_npy_data, MelPairedDataset, WaveDataset
-import numpy as np
-import argparse
 import datetime
+import os
+
+import audioldm_eval.audio as Audio
+import numpy as np
 import torch
-from torch.utils.data import DataLoader
-from tqdm import tqdm
 import torchaudio.transforms as T
-from transformers import Wav2Vec2Processor, AutoModel, Wav2Vec2FeatureExtractor
+from audioldm_eval import calculate_fid, calculate_isc, calculate_kl
+from audioldm_eval.audio.tools import load_pickle
+from audioldm_eval.datasets.load_mel import MelPairedDataset, WaveDataset
+from audioldm_eval.feature_extractors.panns import Cnn14
 from audioldm_eval.metrics.fad import FrechetAudioDistance
-from audioldm_eval import calculate_fid, calculate_isc, calculate_kid, calculate_kl
 from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
-from audioldm_eval.feature_extractors.panns import Cnn14
-from audioldm_eval.audio.tools import save_pickle, load_pickle, write_json, load_json
 from ssr_eval.metrics import AudioMetrics
-import audioldm_eval.audio as Audio
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+from transformers import AutoModel, Wav2Vec2FeatureExtractor
 
 #torch.serialization.add_safe_globals([np.core.multiarray._reconstruct])
 
@@ -165,7 +165,7 @@ class EvaluationHelper:
             return False
 
     def calculate_lsd(self, pairedloader, same_name=True, time_offset=160 * 7):
-        if same_name == False:
+        if same_name is False:
             return {
                 "lsd": -1,
                 "ssim_stft": -1,
@@ -202,7 +202,7 @@ class EvaluationHelper:
         return result
 
     def calculate_psnr_ssim(self, pairedloader, same_name=True):
-        if same_name == False:
+        if same_name is False:
             return {"psnr": -1, "ssim": -1}
         psnr_avg = []
         ssim_avg = []
@@ -427,12 +427,12 @@ class EvaluationHelper:
                 out.get("kernel_inception_distance_std", float("nan")),
         }
 
-        json_path = os.path.join(
-            os.path.dirname(generate_files_path),
-            self.get_current_time() + "_" +
-            os.path.basename(generate_files_path) + ".json"
-        )
-        #write_json(result, json_path)
+        # json_path = os.path.join(
+        #     os.path.dirname(generate_files_path),
+        #     self.get_current_time() + "_" +
+        #     os.path.basename(generate_files_path) + ".json"
+        # )
+        # write_json(result, json_path)
         return result
 
     def get_current_time(self):
@@ -498,9 +498,6 @@ class EvaluationHelper:
                         for k in out_meta.keys()
                     }
             except Exception as e:
-                import ipdb
-
-                ipdb.set_trace()
                 print("Classifier Inference error: ", e)
                 continue
 
@@ -514,10 +511,7 @@ class EvaluationHelper:
 
 
 if __name__ == "__main__":
-    import yaml
     import argparse
-    from audioldm_eval import EvaluationHelper
-    import torch
 
     parser = argparse.ArgumentParser()
 

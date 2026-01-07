@@ -1,5 +1,5 @@
-from typing import Any
 from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
 import torch

@@ -1,23 +1,24 @@
-from abc import abstractmethod, ABC
-from enum import Enum
-from typing import Literal, Any
 import shutil
-from pathlib import Path
-from dataclasses import dataclass
+from abc import ABC, abstractmethod
 from contextlib import contextmanager, nullcontext
+from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+from typing import Any, Literal
 
 import numpy as np
+import torch
 import torch.distributed as dist
-from tqdm import trange, tqdm
+import torch.nn as nn
+from accelerate import DistributedDataParallelKwargs
+from accelerate.utils import broadcast, set_seed
+
 # from torchdata.stateful_dataloader import StatefulDataLoader
 from torch.utils.data import DataLoader
-import torch
-import torch.nn as nn
-from accelerate.utils import set_seed, broadcast, DataLoaderConfiguration
-from accelerate import DistributedDataParallelKwargs
+from tqdm import trange
 
-from ..utils.accelerate import AcceleratorSaveTrainableParams
 from ..utils import is_package_available
+from ..utils.accelerate import AcceleratorSaveTrainableParams
 
 
 @dataclass(kw_only=True)
@@ -248,35 +249,35 @@ class Trainer(CheckpointMixin):
     def training_step(self, batch: Any, batch_idx: int) -> torch.Tensor:
         """
         Performs a single training step, like `training_step()` in Pytorch-Lightning.
-        
+
         This method is called for each batch during training. Subclasses must implement
         this method to define the forward pass, loss computation, and other optional operations.
         The returned loss will be automatically used for backpropagation.
-        
+
         Args:
             batch: A batch of data from the training DataLoader.
             batch_idx: The index of the current batch within the current epoch (0-indexed).
                 This can be useful for logging or conditional logic based on batch position.
-        
+
         Returns:
             torch.Tensor: The computed loss tensor. It will be used for `loss.backward()`.
                 The tensor should be a 0-dimensional.
                 The loss will be automatically logged as "train/loss" by the Trainer.
-        
+
         Example:
             ```python
             >>> def training_step(self, batch, batch_idx):
             ...     features, labels = batch
             ...     preds = self.model(features)
             ...     loss = self.loss_fn(preds, labels)
-            ...     
+            ...
             ...     # Optional: Log additional metrics
             ...     lr = self.optimizer.param_groups[0]["lr"]
             ...     self.accelerator.log({"train/lr": lr}, step=self.step)
-            ...     
+            ...
             ...     return loss
             ```
-        
+
         Note:
             - You should NOT call `loss.backward()` manually - the Trainer handles this automatically.
         """
@@ -286,40 +287,40 @@ class Trainer(CheckpointMixin):
     def validation_step(self, batch: Any, batch_idx: int) -> None:
         """
         Performs a single validation step, like `validation_step()` in Pytorch-Lightning.
-        
+
         This method is called for each batch during validation. Subclasses must implement
         this method to define the prediction operation and the potential metric calculation.
         You can specify the metric calculation logic to use the metric for learning rate scheduling
         or early stopping later.
-        
+
         Args:
             batch: A batch of data from the validation DataLoader.
             batch_idx: The index of the current batch within the validation loop (0-indexed).
                 This can be useful for logging or conditional logic based on batch position.
-        
+
         Returns:
             None: This method should not return anything. Store validation results in instance
                 variables for later use in `get_val_metrics()`.
-        
+
         Example:
             ```python
             >>> def validation_step(self, batch, batch_idx):
             ...     features, labels = batch
             ...     preds = self.model(features)
             ...     predictions = preds.argmax(dim=-1)
-            ...     
+            ...
             ...     # Gather predictions from all processes (important for distributed training)
             ...     output = {"predictions": predictions, "labels": labels}
             ...     output = self.accelerator.gather_for_metrics(output)
-            ...     
+            ...
             ...     # Accumulate metrics
             ...     accurate_preds = (output["predictions"] == output["labels"])
             ...     self.validation_stats["accurate"] += accurate_preds.long().sum()
             ...     self.validation_stats["num_elems"] += accurate_preds.shape[0]
             ```
-        
+
         Note:
-            - Use `self.accelerator.gather_for_metrics()` to collect predictions from all processes 
+            - Use `self.accelerator.gather_for_metrics()` to collect predictions from all processes
               before computing metrics, otherwise discrepancies between processes may result in deadlocks.
         """
         raise NotImplementedError("Subclasses must implement this method")
@@ -387,7 +388,7 @@ class Trainer(CheckpointMixin):
         This property allows subclasses to specify additional objects (beyond the Trainer itself)
         that should be saved and restored during checkpointing. All objects in the returned list
         must implement the `CheckpointMixin` interface (i.e., have `state_dict()` and
-        `load_state_dict()` methods). The customized checkpointing is achieved by registering these 
+        `load_state_dict()` methods). The customized checkpointing is achieved by registering these
         objects with the Accelerate framework during `setup_accelerator()`.
 
         Returns:
@@ -405,7 +406,7 @@ class Trainer(CheckpointMixin):
 
                 def state_dict(self) -> dict:
                     return {"version": self.version}
-                
+
                 def load_state_dict(self, state_dict: dict) -> None:
                     self.version = state_dict["version"]
 
@@ -466,7 +467,7 @@ class Trainer(CheckpointMixin):
         clean_old_checkpoints: bool = True
     ) -> None:
         """
-        Note: since `wait_for_everyone` is called, user must be responsible for making sure 
+        Note: since `wait_for_everyone` is called, user must be responsible for making sure
         all processes call or not call this function at the same time!!!
         """
         self.accelerator.wait_for_everyone()

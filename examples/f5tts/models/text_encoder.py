@@ -1,9 +1,10 @@
+# ruff: noqa: F722 F821
+
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from utils.tokenize import TokenizerBase
 
 

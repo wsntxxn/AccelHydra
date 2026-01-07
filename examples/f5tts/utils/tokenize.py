@@ -1,11 +1,11 @@
-from functools import lru_cache
-from abc import abstractmethod, ABC
 import json
+from abc import ABC, abstractmethod
+from functools import lru_cache
 
 import jieba
-from pypinyin import Style, lazy_pinyin
-from g2p_en import G2p
 import torch
+from g2p_en import G2p
+from pypinyin import Style, lazy_pinyin
 from torch.nn.utils.rnn import pad_sequence
 
 
