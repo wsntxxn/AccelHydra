@@ -34,25 +34,33 @@ def init_dataloader_from_config(config: dict):
     """
     config = deepcopy(config)
     kwargs = {}
-    # NOTE: Here we put "dataset" unchanged in the config dict instead of using instantiated dataset
-    # because of this bug: https://github.com/omry/omegaconf/issues/731, and standard
-    # PyTorch `Dataset` class inherits `Generic`
-    #
-    # You can modify this to use the exact same `dataset` to instantiate the sampler/batch_sampler and
-    # dataloader, as long as your dataset does not inherit `Generic`
+    # NOTE: Here we manually take class and instantiating arguments to avoid the dataset class being
+    # converted between instance and OmegaConf.DictConfig, especially when there is randomness in
+    # the initialization process of the dataset instance
+    dataset = hydra.utils.instantiate(config.pop("dataset"), _convert_="all")
+    kwargs["dataset"] = dataset
     if "sampler" in config:
-        config["sampler"]["data_source"] = config["dataset"]
-        sampler = hydra.utils.instantiate(config["sampler"], _convert_="all")
+        sampler_cfg = config.pop("sampler")
+        sampler_cls = hydra.utils.get_class(sampler_cfg.pop("_target_"))
+        sampler = sampler_cls(data_source=dataset, **sampler_cfg)
         kwargs["sampler"] = sampler
-        config.pop("sampler")
-
     elif "batch_sampler" in config:
-        config["batch_sampler"]["data_source"] = config["dataset"]
-        batch_sampler = hydra.utils.instantiate(
-            config["batch_sampler"], _convert_="all"
+        batch_sampler_cfg = config.pop("batch_sampler")
+        batch_sampler_cls = hydra.utils.get_class(
+            batch_sampler_cfg.pop("_target_")
+        )
+        batch_sampler = batch_sampler_cls(
+            data_source=dataset, **batch_sampler_cfg
         )
         kwargs["batch_sampler"] = batch_sampler
-        config.pop("batch_sampler")
 
-    dataloader = hydra.utils.instantiate(config, **kwargs, _convert_="all")
+    if "collate_fn" in config:
+        collate_fn = hydra.utils.instantiate(
+            config.pop("collate_fn"), _convert_="all"
+        )
+    else:
+        collate_fn = None
+    kwargs["collate_fn"] = collate_fn
+    dataloader_cls = hydra.utils.get_class(config.pop("_target_"))
+    dataloader = dataloader_cls(**kwargs, **config)
     return dataloader

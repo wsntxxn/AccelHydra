@@ -51,12 +51,16 @@ class CountParamsBase(nn.Module):
 class SaveTrainableParamsBase(nn.Module):
     @property
     def param_names_to_save(self):
+        state_dict_keys = set(self.state_dict().keys())
+
         names = []
         for name, param in self.named_parameters():
             if param.requires_grad:
                 names.append(name)
-        for name, _ in self.named_buffers():
-            names.append(name)
+
+        all_buffer_names = {n for n, _ in self.named_buffers()}
+        persistent_buffers = all_buffer_names.intersection(state_dict_keys)
+        names.extend(list(persistent_buffers))
         return names
 
     def load_state_dict(self, state_dict, strict=True):

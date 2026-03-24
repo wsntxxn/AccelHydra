@@ -6,6 +6,7 @@ from typing import Callable
 import numpy as np
 import torch
 import torch.nn as nn
+from safetensors.torch import load_file
 
 logger = logging.Logger(__file__)
 
@@ -61,7 +62,10 @@ def load_pretrained_model(
 ) -> None:
     state_dict = ckpt_or_state_dict
     if not isinstance(state_dict, dict):
-        state_dict = torch.load(ckpt_or_state_dict, "cpu")
+        if ckpt_or_state_dict.endswith(".safetensors"):
+            state_dict = load_file(ckpt_or_state_dict, device="cpu")
+        else:
+            state_dict = torch.load(ckpt_or_state_dict, "cpu")
 
     model_dict = model.state_dict()
     state_dict = state_dict_process_fn(model_dict, state_dict)
@@ -72,7 +76,7 @@ def create_mask_from_length(
     lengths: torch.Tensor, max_length: int | None = None
 ):
     if max_length is None:
-        max_length = max(lengths)
+        max_length = lengths.max().item()
     idxs = torch.arange(max_length).reshape(1, -1)  # (1, max_length)
     mask = idxs.to(lengths.device) < lengths.view(-1, 1)
     # (1, max_length) < (batch_size, 1) -> (batch_size, max_length)
@@ -246,24 +250,3 @@ def contains_nan(data):
     elif isinstance(data, dict):
         return any(contains_nan(v) for v in data.values())
     return False
-
-
-def check_nan_in_batch(batch):
-    """check if batch contains NaN and return nan audio ids"""
-    assert isinstance(batch, dict), "batch type error"
-    nan_audio_ids = []
-    audio_ids = batch["audio_id"]
-    audio_id2content = {}
-    for idx, audio_id in enumerate(audio_ids):
-        content = []
-        for k, v in batch.items():
-            if k == "audio_id":
-                continue
-            content.append(v[idx])
-        audio_id2content[audio_id] = content
-
-    for audio_id, content in audio_id2content.items():
-        if contains_nan(content):
-            nan_audio_ids.append(audio_id)
-            print(f"{audio_id} contains NaN")
-    return nan_audio_ids

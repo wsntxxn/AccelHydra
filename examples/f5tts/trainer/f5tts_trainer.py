@@ -61,7 +61,6 @@ class F5TTSTrainer(Trainer):
     def on_validation_start(self):
         self.val_loss_dict = defaultdict(float)
         self.val_batch_num = 0
-        self.val_time_aligned_batch_num = 0
 
     def validation_step(self, batch, batch_idx):
         output = self.model(**batch)

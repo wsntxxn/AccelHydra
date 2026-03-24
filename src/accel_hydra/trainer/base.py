@@ -219,6 +219,14 @@ class Trainer(CheckpointMixin):
                 train_batch_sampler, "drop_last", False
             ) is True, "drop_last must be True when batch_sampler does not have batch_size"
 
+        if self.val_dataloader is not None:
+            val_batch_sampler = self.val_dataloader.batch_sampler
+            if not hasattr(val_batch_sampler, "batch_size"):
+                assert self.even_batches is False, "even_batches must be False when batch_sampler does not have batch_size"
+                assert getattr(
+                    val_batch_sampler, "drop_last", False
+                ) is True, "drop_last must be True when batch_sampler does not have batch_size and even_batches is False"
+
         self.accelerator.even_batches = self.even_batches
         # TODO when `loss_fn` does not have named_parameters/buffers, loading will raise error
         (
@@ -349,6 +357,7 @@ class Trainer(CheckpointMixin):
             dataloader_len = self.gather_min_length(len(self.val_dataloader))
         else:
             dataloader_len = len(self.val_dataloader)
+
         self.val_data_iterator = iter(self.val_dataloader)
         if self.accelerator.is_main_process:
             range_iterator = trange(
