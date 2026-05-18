@@ -1,3 +1,3 @@
-from .common import CountParamsBase, LoadPretrainedBase
+from .common import CountParamsMixin, LoadPretrainedMixin
 
-__all__ = ["CountParamsBase", "LoadPretrainedBase"]
+__all__ = ["CountParamsMixin", "LoadPretrainedMixin"]

@@ -18,7 +18,7 @@ sys.path.insert(0, str(project_root / "src"))
 project = 'AccelHydra'
 copyright = '2025, Xuenan Xu, Yixuan Li, Jiahao Mei'
 author = 'Xuenan Xu, Yixuan Li, Jiahao Mei'
-release = '0.0.6'
+release = '0.0.6.post1'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

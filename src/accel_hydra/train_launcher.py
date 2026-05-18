@@ -5,7 +5,7 @@ from accelerate.state import PartialState
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader
 
-from .models import CountParamsBase
+from .models import CountParamsMixin
 from .trainer import Trainer
 from .utils.config import load_config_from_cli, register_omegaconf_resolvers
 from .utils.data import init_dataloader_from_config
@@ -137,7 +137,7 @@ class TrainLauncher:
 
         config = setup_resume_cfg(config, do_print=state.is_main_process)
 
-        model: CountParamsBase = hydra.utils.instantiate(
+        model: CountParamsMixin = hydra.utils.instantiate(
             config["model"], _convert_="all"
         )
 
