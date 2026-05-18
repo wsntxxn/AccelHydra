@@ -1,12 +1,11 @@
 from pathlib import Path
 
 import torch
-import torch.nn as nn
 
 from ..utils.torch import load_pretrained_model, merge_matched_keys
 
 
-class LoadPretrainedBase(nn.Module):
+class LoadPretrainedMixin:
     """Base class for loading pretrained checkpoints with custom state dict processing function."""
     def process_state_dict(
         self, model_dict: dict[str, torch.Tensor],
@@ -37,7 +36,7 @@ class LoadPretrainedBase(nn.Module):
         )
 
 
-class CountParamsBase(nn.Module):
+class CountParamsMixin:
     def count_params(self):
         num_params = 0
         trainable_params = 0
@@ -48,7 +47,7 @@ class CountParamsBase(nn.Module):
         return num_params, trainable_params
 
 
-class SaveTrainableParamsBase(nn.Module):
+class SaveTrainableParamsMixin:
     @property
     def param_names_to_save(self):
         state_dict_keys = set(self.state_dict().keys())

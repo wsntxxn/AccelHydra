@@ -157,6 +157,7 @@ class Trainer(CheckpointMixin):
     gradient_accumulation_steps: int = 1
     max_grad_norm: float | None = 2.0
     resume_from_checkpoint: str | Path | None = None
+    log_every_n_steps: int | None = 50
     save_every_n_steps: int | None = None
     permanent_save_every_n_steps: int | None = None
     save_every_n_epochs: int | None = 1
@@ -483,14 +484,13 @@ class Trainer(CheckpointMixin):
         if self.accelerator.is_main_process:
             save_dir = Path(save_dir)
 
-            if clean_old_checkpoints:
-                checkpoints_dir = save_dir.parent
-                if self.save_last_k:
-                    self.clean_checkpoints_to_k(
-                        checkpoints_dir, self.save_last_k - 1
-                    )
+            if clean_old_checkpoints and self.save_last_k:
+                self.clean_checkpoints_to_k(
+                    save_dir.parent, self.save_last_k - 1
+                )
 
-            self.accelerator.save_state(save_dir)
+        self.accelerator.wait_for_everyone()
+        self.accelerator.save_state(save_dir)
         self.accelerator.wait_for_everyone()
 
     def train_loop(self) -> None:
@@ -521,8 +521,10 @@ class Trainer(CheckpointMixin):
 
             with self.accelerator.accumulate(self.model):
                 loss = self.training_step(batch, batch_idx)
-                self.accelerator.log({"train/loss": loss.item()},
-                                     step=self.step)
+
+                if self.step % self.log_every_n_steps == 0:
+                    self.accelerator.log({"train/loss": loss.item()},
+                                         step=self.step)
 
                 self.accelerator.backward(loss)
 
@@ -536,8 +538,9 @@ class Trainer(CheckpointMixin):
                         grad_norm = nn.utils.clip_grad_norm_(
                             self.model.parameters(), float('inf')
                         )
-                    self.accelerator.log({"train/grad_norm": grad_norm},
-                                         step=self.step)
+                    if self.step % self.log_every_n_steps == 0:
+                        self.accelerator.log({"train/grad_norm": grad_norm},
+                                             step=self.step)
 
                 self.optimizer.step()
                 if self.lr_scheduler_interval == LRSchedulerInterval.STEP:
